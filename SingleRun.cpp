@@ -21,7 +21,6 @@
 #include <vector>
 #include <cstring>
 #include <ctime>
-#include <random>
 #include <cstdlib>
 
 using namespace std;
@@ -66,9 +65,9 @@ int editDist(const char *s1, const char *s2, const int k)
         DPtable[0][i] = i;
         DPtable[i][0] = i;
     }
-    for (int i = 0; i < k; ++i)
+    for (int i = 1; i < k; ++i)
     {
-        for (int j = 0; j < k; ++j)
+        for (int j = 1; j < k; ++j)
         {
             if (s1[i] != s2[j])
             {
