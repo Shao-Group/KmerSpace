@@ -69,7 +69,7 @@ int editDist(const char *s1, const char *s2, const int k)
     {
         for (int j = 1; j < k + 1; ++j)
         {
-            if (s1[i] != s2[j])
+            if (s1[i-1] != s2[j-1])
             {
                 DPtable[i][j] = DPtable[i-1][j-1] + 1;
             }
