@@ -59,15 +59,15 @@ void generateKmerSpace(const char *bases, vector<char *> &kmerSpace, char *kmer,
  */
 int editDist(const char *s1, const char *s2, const int k)
 {
-    int DPtable[k][k];
-    for (int i = 0; i < k; ++i)
+    int DPtable[k + 1][k + 1];
+    for (int i = 0; i < k + 1; ++i)
     {
         DPtable[0][i] = i;
         DPtable[i][0] = i;
     }
-    for (int i = 1; i < k; ++i)
+    for (int i = 1; i < k + 1; ++i)
     {
-        for (int j = 1; j < k; ++j)
+        for (int j = 1; j < k + 1; ++j)
         {
             if (s1[i] != s2[j])
             {
@@ -87,7 +87,7 @@ int editDist(const char *s1, const char *s2, const int k)
             }
         }
     }
-    return DPtable[k-1][k-1];
+    return DPtable[k][k];
 }
 
 int main()
