@@ -1,63 +1,42 @@
 /*
  * This program addresses the following problem from Prof. Mingfu Shao (mxs2589@psu.edu).
  *
+ * --------------------------------------------------------------------------------------
  * Let K be the set of all kmers over alphabet {A, C, G, T}. |K| = 4^k. We build a graph
  * G = (K, E) with K be the set of vertices. Let x and y be two kmers in K. We add an
  * edge to E iff the edit distance between x and y is at most d. We want to calculate the
- * maximum independent set of G.
+ * an maximal independent set of G that covers all vertices.
  *
- * The input for this problem is two integers k and d; the output is a maximum
- * independent set of G constructed above.
+ * The input for this problem is two integers k and d; the output is an independent set
+ * of G constructed above.
  *
  * We can try a simple greedy algorithm. We first generate K. We then iteratively and
  * randomly pick a kmer x from K, and remove x and all other kmers whose edit distance
  * with x is at most d; we repeat this procedure until K becomes empty.
+ * --------------------------------------------------------------------------------------
  *
+ * In the program, the author uses a binary encoding {00, 01, 10, 11} for the alphabet
+ * {A, C, G, T} in order to save space. Thus, any k-mer that is not longer than 32
+ * characters can be represented by a 64-bit binary number stored in an 8-byte slot.
  *
  * Author: Leran Ma (lkm5463@psu.edu)
  */
 
 #include <iostream>
 #include <vector>
-#include <cstring>
 #include <ctime>
 #include <cstdlib>
 
 using namespace std;
 
 /*
- * Generates the k-mer space
+ * Calculates the edit distance between 2 k-mers
  *
- * bases    : an array of the four bases 'A', 'C', 'G', 'T'
- * kmerSpace: the k-mer space
- * kmer     : a temporary string to hold the k-mer that is being editing
- * k        : the length of a k-mer
- * pos      : the position that is currently being editing
+ * s1: The encoding of the first k-mer
+ * s2: The encoding of the second k-mer
+ * k : The length of the two k-mers
  */
-void generateKmerSpace(const char *bases, vector<char *> &kmerSpace, char *kmer, const int k, int pos)
-{
-    if (pos == k)
-    {
-        char *temp = new char[k];
-        strcpy(temp, kmer);
-        kmerSpace.push_back(temp);
-        return;
-    }
-    for (int i = 0; i < 4; ++i)
-    {
-        kmer[pos] = bases[i];
-        generateKmerSpace(bases, kmerSpace, kmer, k, pos + 1);
-    }
-}
-
-/*
- * Calculates the edit distance between two strings of length k
- *
- * s1: The first string
- * s2: The second string
- * k : The length of the two strings
- */
-int editDist(const char *s1, const char *s2, const int k)
+int editDist(const unsigned long int s1, const unsigned long int s2, const int k)
 {
     int DPtable[k + 1][k + 1];
     for (int i = 0; i < k + 1; ++i)
@@ -69,7 +48,7 @@ int editDist(const char *s1, const char *s2, const int k)
     {
         for (int j = 1; j < k + 1; ++j)
         {
-            if (s1[i-1] != s2[j-1])
+            if ( ((s1 >> (2*(i-1))) & 3) != ((s2 >> (2*(j-1))) & 3) )
             {
                 DPtable[i][j] = DPtable[i-1][j-1] + 1;
             }
@@ -90,46 +69,82 @@ int editDist(const char *s1, const char *s2, const int k)
     return DPtable[k][k];
 }
 
+/*
+ * Prints a k-mer given its binary encoding
+ *
+ * enc: The binary encoding of the k-mer
+ * k  : The length of the k-mer
+ */
+void printKmer(unsigned long int enc, int k)
+{
+    char kmer[k + 1];
+    kmer[k] = '\0';
+    for (int i = k - 1; i >= 0; --i)
+    {
+        if ( (enc & 3) == 0 )
+        {
+            kmer[i] = 'A';
+        }
+        else if ( (enc & 3) == 1 )
+        {
+            kmer[i] = 'C';
+        }
+        else if( (enc & 3) == 2 )
+        {
+            kmer[i] = 'G';
+        }
+        else
+        {
+            kmer[i] = 'T';
+        }
+        enc = enc >> 2;
+    }
+    cout << kmer;
+}
+
 int main()
 {
-    char bases[4] = {'A', 'C', 'G', 'T'};
-    vector<char *> kmerSpace; // The k-mer space
     int k;
     int d;
-
-    cout << "Please enter k:";
+    cout << "Please enter k: ";
     cin >> k;
-    cout << "Plesae enter d:";
+    cout << "Plesae enter d: ";
     cin >> d;
 
-    char temp[k];
-    generateKmerSpace(bases, kmerSpace, temp, k, 0); // Generate the k-mer space
+    // Generate the k-mer space
+    vector<unsigned long int> kmerSpace;
+    unsigned long int kmerSpaceSize = 1;
+    kmerSpaceSize = kmerSpaceSize << (2 * k);
+    for (unsigned long int i = 0; i < kmerSpaceSize; ++i)
+    {
+        kmerSpace.push_back(i);
+    }
 
     srand( time(nullptr) );
 
+    int num_indep_nodes = 0;
     cout << "List of independent nodes: " << endl;
-    int num_of_indep_nodes = 0;
-    while (!kmerSpace.empty())
+    while ( !kmerSpace.empty() )
     {
         int picked = rand() % kmerSpace.size();
-        char picked_kmer[k + 1];
-        strcpy(picked_kmer, kmerSpace[picked]);
-        picked_kmer[k] = '\0';
-        cout << picked_kmer << " ";
-        delete [] kmerSpace[picked];
+        unsigned long int picked_kmer = kmerSpace[picked];
+        printKmer(picked_kmer, k);
+        cout << ' ';
+        num_indep_nodes++;
         kmerSpace.erase(kmerSpace.begin() + picked);
-        num_of_indep_nodes++;
-        for (unsigned int i = 0; i < kmerSpace.size(); ++i) // Compare the picked k-mer with the rest of the k-mers
+
+        // Compare the picked k-mer with the rest of the k-mers
+        for (unsigned long int i = 0; i < kmerSpace.size(); ++i)
         {
             if (editDist(picked_kmer, kmerSpace[i], k) <= d)
             {
-                delete [] kmerSpace[i];
                 kmerSpace.erase(kmerSpace.begin() + i);
                 i--;
             }
         }
     }
-    cout << "\nThe graph has an independent set of size " << num_of_indep_nodes << ".\n";
+
+    cout << "\nThe graph has an independent set of size " << num_indep_nodes << ".\n";
 
     return 0;
 }
