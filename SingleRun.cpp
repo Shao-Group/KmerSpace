@@ -77,26 +77,12 @@ int editDist(const unsigned long int s1, const unsigned long int s2, const int k
  */
 void printKmer(unsigned long int enc, int k)
 {
+    char base[4] = {'A', 'C', 'G', 'T'};
     char kmer[k + 1];
     kmer[k] = '\0';
     for (int i = k - 1; i >= 0; --i)
     {
-        if ( (enc & 3) == 0 )
-        {
-            kmer[i] = 'A';
-        }
-        else if ( (enc & 3) == 1 )
-        {
-            kmer[i] = 'C';
-        }
-        else if( (enc & 3) == 2 )
-        {
-            kmer[i] = 'G';
-        }
-        else
-        {
-            kmer[i] = 'T';
-        }
+        kmer[i] = base[enc & 3];
         enc = enc >> 2;
     }
     cout << kmer;
