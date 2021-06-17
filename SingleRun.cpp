@@ -119,7 +119,7 @@ int main()
         for (int j = 1; j <= k; ++j)
         {
             unsigned long int head = (i >> (2 * j)) << (2 * (j - 1));
-            unsigned long int tail = (i << (64 - 2 * (j - 1))) >> (64 - 2 * (j - 1));
+            unsigned long int tail = (i << 1 << (63 - 2 * (j - 1))) >> (63 - 2 * (j - 1)) >> 1;
             node n( head + tail, k - 1 );
             auto it = find(kmers[i].begin(), kmers[i].end(), n); // Check for duplication
             if ( it == kmers[i].end() )
@@ -134,7 +134,7 @@ int main()
         for (int j = 0; j <= k; ++j)
         {
             unsigned long int head = (i >> (2 * j)) << (2 * (j + 1));
-            unsigned long int tail = (i << (64 - 2 * j)) >> (64 - 2 * j);
+            unsigned long int tail = (i << 1 << (63 - 2 * j)) >> (63 - 2 * j) >> 1;
             for (unsigned long int l = 0; l < 4; ++l)
             {
                 unsigned long int body = l << (2 * j);
@@ -153,13 +153,13 @@ int main()
         for (int j = 1; j <= k; ++j)
         {
             unsigned long int head = (i >> (2 * j)) << (2 * j);
-            unsigned long int tail = (i << (64 - 2 * (j - 1))) >> (64 - 2 * (j - 1));
+            unsigned long int tail = (i << 1 << (63 - 2 * (j - 1))) >> (63 - 2 * (j - 1)) >> 1;
             for (unsigned long int l = 0; l < 4; ++l)
             {
                 unsigned long int body = l << (2 * (j - 1));
                 node n( head + body + tail, k );
                 auto it = find(kmers[i].begin(), kmers[i].end(), n);
-                if ( it == kmers[i].end() )
+                if ( it == kmers[i].end() && head + body + tail != i )
                 {
                     kmers[i].push_back( n );
                 }
