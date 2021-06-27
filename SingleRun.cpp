@@ -89,9 +89,13 @@ void findAndErase( vector<unsigned long int> &kmerSpace,
                    unsigned long int enc,
                    unsigned long int &lastFound )
 {
-    if ( lastFound >= kmerSpace.size() )
+    if ( kmerSpace.empty() )
     {
-        for (unsigned long int i = kmerSpace.size() - 1; i <= 0 ; --i)
+        return;
+    }
+    if ( lastFound >= kmerSpace.size() - 1 )
+    {
+        for (unsigned long int i = kmerSpace.size() - 1; i >= 0 ; --i)
         {
             if ( kmerSpace[i] == enc )
             {
@@ -100,6 +104,7 @@ void findAndErase( vector<unsigned long int> &kmerSpace,
                 return;
             }
         }
+        return;
     }
 
     unsigned long int d = lastFound;
@@ -138,7 +143,7 @@ void findAndErase( vector<unsigned long int> &kmerSpace,
     }
     else
     {
-        for (unsigned long int i = lastFound - d - 1; i >= 0; --i)
+        for (unsigned long int i = lastFound - d - 1; i >= 0 && i < kmerSpace.size(); --i)
         {
             if ( kmerSpace[i] == enc )
             {
@@ -288,9 +293,12 @@ int main()
                     {
                         if (dist_kmer[i >> 2] > dist_kmer[Q[0] >> 2] + 1)
                         {
+                            if (dist_kmer[i >> 2] == d + 1)
+                            {
+                                findAndErase( kmerSpace, i >> 2, lastFound );
+                            }
                             dist_kmer[i >> 2] = dist_kmer[Q[0] >> 2] + 1;
                             Q.push_back(i);
-                            findAndErase( kmerSpace, i >> 2, lastFound );
                         }
                     }
                     else if ( (i & 3) == 0 )
@@ -317,9 +325,12 @@ int main()
                 {
                     if (dist_kmer[i >> 2] > dist_kMinus1mer[Q[0] >> 2] + 1)
                     {
+                        if (dist_kmer[i >> 2] == d + 1)
+                        {
+                            findAndErase( kmerSpace, i >> 2, lastFound );
+                        }
                         dist_kmer[i >> 2] = dist_kMinus1mer[Q[0] >> 2] + 1;
                         Q.push_back(i);
-                        findAndErase( kmerSpace, i >> 2, lastFound );
                     }
                 }
             }
@@ -329,9 +340,12 @@ int main()
                 {
                     if (dist_kmer[i >> 2] > dist_kPlus1mer[Q[0] >> 2] + 1)
                     {
+                        if (dist_kmer[i >> 2] == d + 1)
+                        {
+                            findAndErase( kmerSpace, i >> 2, lastFound );
+                        }
                         dist_kmer[i >> 2] = dist_kPlus1mer[Q[0] >> 2] + 1;
                         Q.push_back(i);
-                        findAndErase( kmerSpace, i >> 2, lastFound );
                     }
                 }
             }
