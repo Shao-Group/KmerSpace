@@ -59,6 +59,9 @@ void printKmer(unsigned long int enc, int k)
     cout << kmer;
 }
 
+/*
+ * Remove duplicate elements within a vector
+ */
 void removeDuplicates( vector<unsigned long int> &temp )
 {
     map<unsigned long int, bool> m;
@@ -70,6 +73,80 @@ void removeDuplicates( vector<unsigned long int> &temp )
     for ( auto &i : m )
     {
         temp.push_back( i.first );
+    }
+}
+
+/*
+ * Find and erase an element from the k-mer space. In order to be faster, we start
+ * finding from the position of the last target of this function and iterate forward
+ * and backward.
+ *
+ * kmerSpace: The k-mer space
+ * enc      : The binary encoding of the k-mer to be erased
+ * lastFound: The index of the last target of this function
+ */
+void findAndErase( vector<unsigned long int> &kmerSpace,
+                   unsigned long int enc,
+                   unsigned long int &lastFound )
+{
+    if ( lastFound >= kmerSpace.size() )
+    {
+        for (unsigned long int i = kmerSpace.size() - 1; i <= 0 ; --i)
+        {
+            if ( kmerSpace[i] == enc )
+            {
+                kmerSpace.erase( kmerSpace.begin() + i );
+                lastFound = i;
+                return;
+            }
+        }
+    }
+
+    unsigned long int d = lastFound;
+    if ( kmerSpace.size() - lastFound - 1 < d )
+    {
+        d = kmerSpace.size() - lastFound - 1;
+    }
+
+    for (unsigned long int i = 0; i <= d; ++i)
+    {
+        if ( kmerSpace[lastFound + i] == enc )
+        {
+            kmerSpace.erase( kmerSpace.begin() + lastFound + i );
+            lastFound = lastFound + i;
+            return;
+        }
+        if ( kmerSpace[lastFound - i] == enc )
+        {
+            kmerSpace.erase( kmerSpace.begin() + lastFound - i );
+            lastFound = lastFound - i;
+            return;
+        }
+    }
+
+    if ( d == lastFound )
+    {
+        for (unsigned long int i = lastFound + d + 1; i < kmerSpace.size(); ++i)
+        {
+            if ( kmerSpace[i] == enc )
+            {
+                kmerSpace.erase( kmerSpace.begin() + i );
+                lastFound = i;
+                return;
+            }
+        }
+    }
+    else
+    {
+        for (unsigned long int i = lastFound - d - 1; i >= 0; --i)
+        {
+            if ( kmerSpace[i] == enc )
+            {
+                kmerSpace.erase( kmerSpace.begin() + i );
+                lastFound = i;
+                return;
+            }
+        }
     }
 }
 
@@ -185,6 +262,7 @@ int main()
 
     srand( time(nullptr) );
     int num_indep_nodes = 0;
+    unsigned long int lastFound;
     cout << "List of independent nodes: " << endl;
     while ( !kmerSpace.empty() )
     {
@@ -194,6 +272,7 @@ int main()
         cout << ' ';
         num_indep_nodes++;
         kmerSpace.erase(kmerSpace.begin() + picked);
+        lastFound = picked;
 
         // Do BFS
         vector<unsigned long int> Q; // Initialize an empty queue
@@ -211,11 +290,7 @@ int main()
                         {
                             dist_kmer[i >> 2] = dist_kmer[Q[0] >> 2] + 1;
                             Q.push_back(i);
-                            auto it = find(kmerSpace.begin(), kmerSpace.end(), i >> 2);
-                            if ( it != kmerSpace.end() )
-                            {
-                                kmerSpace.erase(it);
-                            }
+                            findAndErase( kmerSpace, i >> 2, lastFound );
                         }
                     }
                     else if ( (i & 3) == 0 )
@@ -244,11 +319,7 @@ int main()
                     {
                         dist_kmer[i >> 2] = dist_kMinus1mer[Q[0] >> 2] + 1;
                         Q.push_back(i);
-                        auto it = find(kmerSpace.begin(), kmerSpace.end(), i >> 2);
-                        if ( it != kmerSpace.end() )
-                        {
-                            kmerSpace.erase(it);
-                        }
+                        findAndErase( kmerSpace, i >> 2, lastFound );
                     }
                 }
             }
@@ -260,11 +331,7 @@ int main()
                     {
                         dist_kmer[i >> 2] = dist_kPlus1mer[Q[0] >> 2] + 1;
                         Q.push_back(i);
-                        auto it = find(kmerSpace.begin(), kmerSpace.end(), i >> 2);
-                        if ( it != kmerSpace.end() )
-                        {
-                            kmerSpace.erase(it);
-                        }
+                        findAndErase( kmerSpace, i >> 2, lastFound );
                     }
                 }
             }
