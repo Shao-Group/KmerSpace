@@ -79,7 +79,7 @@ void removeDuplicates( vector<unsigned long int> &temp )
 /*
  * Find and erase an element from the k-mer space. In order to be faster, we start
  * finding from the position of the last target of this function and iterate forward
- * and backward.
+ * or backward.
  *
  * kmerSpace: The k-mer space
  * enc      : The binary encoding of the k-mer to be erased
@@ -107,31 +107,9 @@ void findAndErase( vector<unsigned long int> &kmerSpace,
         return;
     }
 
-    unsigned long int d = lastFound;
-    if ( kmerSpace.size() - lastFound - 1 < d )
+    if ( kmerSpace[lastFound] < enc )
     {
-        d = kmerSpace.size() - lastFound - 1;
-    }
-
-    for (unsigned long int i = 0; i <= d; ++i)
-    {
-        if ( kmerSpace[lastFound + i] == enc )
-        {
-            kmerSpace.erase( kmerSpace.begin() + lastFound + i );
-            lastFound = lastFound + i;
-            return;
-        }
-        if ( kmerSpace[lastFound - i] == enc )
-        {
-            kmerSpace.erase( kmerSpace.begin() + lastFound - i );
-            lastFound = lastFound - i;
-            return;
-        }
-    }
-
-    if ( d == lastFound )
-    {
-        for (unsigned long int i = lastFound + d + 1; i < kmerSpace.size(); ++i)
+        for (unsigned long int i = lastFound; i < kmerSpace.size(); ++i)
         {
             if ( kmerSpace[i] == enc )
             {
@@ -143,7 +121,7 @@ void findAndErase( vector<unsigned long int> &kmerSpace,
     }
     else
     {
-        for (unsigned long int i = lastFound - d - 1; i >= 0 && i < kmerSpace.size(); --i)
+        for (unsigned long int i = lastFound; i >= 0; --i)
         {
             if ( kmerSpace[i] == enc )
             {
