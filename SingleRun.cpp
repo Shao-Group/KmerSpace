@@ -24,13 +24,17 @@
  *
  * In the program, the author uses a binary encoding {00, 01, 10, 11} for the alphabet
  * {A, C, G, T} in order to save space. Thus, any k-mer that is not longer than 32
- * characters can be represented by a 64-bit binary number stored in an 8-byte slot.
+ * characters can be represented by a 64-bit binary number stored in an 8-byte slot (an
+ * unsigned long int). Besides, the author uses the last 2 bits of the 8-byte slot to
+ * represent the length of the k-mer. 00 represents k - 1; 01 represents k; 11 represents
+ * k + 1.
  *
  * Author: Leran Ma (lkm5463@psu.edu)
  */
 
 #include <iostream>
 #include <vector>
+#include <map>
 #include <ctime>
 #include <algorithm>
 
@@ -49,37 +53,25 @@ void printKmer(unsigned long int enc, int k)
     kmer[k] = '\0';
     for (int i = k - 1; i >= 0; --i)
     {
-        kmer[i] = base[enc & 3];
         enc = enc >> 2;
+        kmer[i] = base[enc & 3];
     }
     cout << kmer;
 }
 
-struct node
+void removeDuplicates( vector<unsigned long int> &temp )
 {
-    unsigned long int read; // The encoding of a read of length k-1, k, or k+1
-    int length; // The lenght of the read
-
-    /*
-     * A constructor
-     *
-     * r: The encoding of a read of length k-1, k, or k+1
-     * l: The lenght of the read
-     */
-    node( unsigned long int r, int l )
+    map<unsigned long int, bool> m;
+    for ( unsigned long &i : temp )
     {
-        read = r;
-        length = l;
+        m.emplace( i, true );
     }
-
-    /*
-     * Overload the operator ==
-     */
-    bool operator==(node const &rhs) const
+    temp.clear();
+    for ( auto &i : m )
     {
-        return read == rhs.read && length == rhs.length;
+        temp.push_back( i.first );
     }
-};
+}
 
 int main()
 {
@@ -91,28 +83,27 @@ int main()
     cin >> d;
 
     // Generate the k-mer space
-    unsigned long int kmerSpaceSize = 1;
-    kmerSpaceSize = kmerSpaceSize << (2 * k);
-    vector<unsigned long int> kmerSpace(kmerSpaceSize);
-    for (unsigned long int i = 0; i < kmerSpaceSize; ++i)
+    unsigned long int num_kmers = 1;
+    num_kmers = num_kmers << (2 * k);
+    vector<unsigned long int> kmerSpace(num_kmers);
+    for (unsigned long int i = 0; i < num_kmers; ++i)
     {
         kmerSpace[i] = i;
     }
 
     // Generate the adjacency list
-    vector<node> temp;
+    vector<unsigned long int> temp;
+    vector< vector<unsigned long int> > kmers( num_kmers, temp );
+
     unsigned long int num_kMinus1mers = 1;
     num_kMinus1mers = num_kMinus1mers << (2 * (k - 1));
-    vector< vector<node> > kMinus1mers( num_kMinus1mers, temp );
-
-    unsigned long int num_kmers = 1;
-    num_kmers = num_kmers << (2 * k);
-    vector< vector<node> > kmers( num_kmers, temp );
+    vector< vector<unsigned long int> > kMinus1mers( num_kMinus1mers, temp );
 
     unsigned long int num_kPlus1mers = 1;
     num_kPlus1mers = num_kPlus1mers << (2 * (k + 1));
-    vector< vector<node> > kPlus1mers( num_kPlus1mers, temp );
+    vector< vector<unsigned long int> > kPlus1mers( num_kPlus1mers, temp );
 
+    // Populate the adjacency list for kmers
     for (unsigned long int i = 0; i < num_kmers; ++i)
     {
         // Handle deletion
@@ -120,14 +111,7 @@ int main()
         {
             unsigned long int head = (i >> (2 * j)) << (2 * (j - 1));
             unsigned long int tail = (i << 1 << (63 - 2 * (j - 1))) >> (63 - 2 * (j - 1)) >> 1;
-            node n( head + tail, k - 1 );
-            auto it = find(kmers[i].begin(), kmers[i].end(), n); // Check for duplication
-            if ( it == kmers[i].end() )
-            {
-                kmers[i].push_back( n );
-                node m( i, k );
-                kMinus1mers[head + tail].push_back( m );
-            }
+            kmers[i].push_back( (head + tail) << 2 );
         }
 
         // Handle insertion
@@ -138,14 +122,8 @@ int main()
             for (unsigned long int l = 0; l < 4; ++l)
             {
                 unsigned long int body = l << (2 * j);
-                node n( head + body + tail, k + 1 );
-                auto it = find(kmers[i].begin(), kmers[i].end(), n);
-                if ( it == kmers[i].end() )
-                {
-                    kmers[i].push_back( n );
-                    node m( i, k );
-                    kPlus1mers[head + body + tail].push_back( m );
-                }
+                unsigned long int node = head + body + tail;
+                kmers[i].push_back( (node << 2) | 2 );
             }
         }
 
@@ -157,14 +135,47 @@ int main()
             for (unsigned long int l = 0; l < 4; ++l)
             {
                 unsigned long int body = l << (2 * (j - 1));
-                node n( head + body + tail, k );
-                auto it = find(kmers[i].begin(), kmers[i].end(), n);
-                if ( it == kmers[i].end() && head + body + tail != i )
+                unsigned long int node = head + body + tail;
+                if ( node != i )
                 {
-                    kmers[i].push_back( n );
+                    kmers[i].push_back( (node << 2) | 1 );
                 }
             }
         }
+
+        removeDuplicates( kmers[i] );
+    }
+
+    // Populate the adjacency list for kMinus1mers
+    for ( unsigned long int i = 0; i < num_kMinus1mers; ++i )
+    {
+        // Handle insertion
+        for (int j = 0; j <= k - 1; ++j)
+        {
+            unsigned long int head = (i >> (2 * j)) << (2 * (j + 1));
+            unsigned long int tail = (i << 1 << (63 - 2 * j)) >> (63 - 2 * j) >> 1;
+            for (unsigned long int l = 0; l < 4; ++l)
+            {
+                unsigned long int body = l << (2 * j);
+                unsigned long int node = head + body + tail;
+                kMinus1mers[i].push_back( (node << 2) | 1 );
+            }
+        }
+        removeDuplicates( kMinus1mers[i] );
+    }
+
+    // Populate the adjacency list for kPlus1mers
+    for ( unsigned long int i = 0; i < num_kPlus1mers; ++i )
+    {
+        // Handle deletion
+        for (int j = 1; j <= k + 1; ++j)
+        {
+            unsigned long int head = (i >> (2 * j)) << (2 * (j - 1));
+            unsigned long int tail = (i << 1 << (63 - 2 * (j - 1))) >> (63 - 2 * (j - 1)) >> 1;
+            unsigned long int node = head + tail;
+            kPlus1mers[i].push_back( (node << 2) | 1 );
+        }
+        removeDuplicates( kPlus1mers[i] );
     }
 
     // Initialize the dist array for BFS
@@ -179,61 +190,61 @@ int main()
     {
         int picked = rand() % kmerSpace.size();
         unsigned long int picked_kmer = kmerSpace[picked];
-        printKmer(picked_kmer, k);
+        printKmer(picked_kmer << 2, k);
         cout << ' ';
         num_indep_nodes++;
         kmerSpace.erase(kmerSpace.begin() + picked);
 
         // Do BFS
-        vector<node> Q; // Initialize an empty queue
-        node n(picked_kmer, k);
-        Q.push_back(n);
+        vector<unsigned long int> Q; // Initialize an empty queue
+        Q.push_back( (picked_kmer << 2) | 1 );
         dist_kmer[picked_kmer] = 0;
         while ( !Q.empty() )
         {
-            if ( Q[0].length == k )
+            if ( (Q[0] & 3) == 1 )
             {
-                for ( auto &i : kmers[Q[0].read] )
+                for ( auto &i : kmers[Q[0] >> 2] )
                 {
-                    if (i.length == k)
+                    if ( (i & 3) == 1 )
                     {
-                        if (dist_kmer[i.read] > dist_kmer[Q[0].read] + 1)
+                        if (dist_kmer[i >> 2] > dist_kmer[Q[0] >> 2] + 1)
                         {
-                            dist_kmer[i.read] = dist_kmer[Q[0].read] + 1;
+                            dist_kmer[i >> 2] = dist_kmer[Q[0] >> 2] + 1;
                             Q.push_back(i);
-                            auto it = find(kmerSpace.begin(), kmerSpace.end(), i.read);
+                            auto it = find(kmerSpace.begin(), kmerSpace.end(), i >> 2);
                             if ( it != kmerSpace.end() )
                             {
                                 kmerSpace.erase(it);
                             }
                         }
                     }
-                    else if (i.length == k - 1)
+                    else if ( (i & 3) == 0 )
                     {
-                        if (dist_kMinus1mer[i.read] > dist_kmer[Q[0].read] + 1) {
-                            dist_kMinus1mer[i.read] = dist_kmer[Q[0].read] + 1;
+                        if (dist_kMinus1mer[i >> 2] > dist_kmer[Q[0] >> 2] + 1)
+                        {
+                            dist_kMinus1mer[i >> 2] = dist_kmer[Q[0] >> 2] + 1;
                             Q.push_back(i);
                         }
                     }
                     else
                     {
-                        if (dist_kPlus1mer[i.read] > dist_kmer[Q[0].read] + 1)
+                        if (dist_kPlus1mer[i >> 2] > dist_kmer[Q[0] >> 2] + 1)
                         {
-                            dist_kPlus1mer[i.read] = dist_kmer[Q[0].read] + 1;
+                            dist_kPlus1mer[i >> 2] = dist_kmer[Q[0] >> 2] + 1;
                             Q.push_back(i);
                         }
                     }
                 }
             }
-            else if ( Q[0].length == k - 1 )
+            else if ( (Q[0] & 3) == 0 )
             {
-                for ( auto &i : kMinus1mers[Q[0].read] )
+                for ( auto &i : kMinus1mers[Q[0] >> 2] )
                 {
-                    if (dist_kmer[i.read] > dist_kMinus1mer[Q[0].read] + 1)
+                    if (dist_kmer[i >> 2] > dist_kMinus1mer[Q[0] >> 2] + 1)
                     {
-                        dist_kmer[i.read] = dist_kMinus1mer[Q[0].read] + 1;
+                        dist_kmer[i >> 2] = dist_kMinus1mer[Q[0] >> 2] + 1;
                         Q.push_back(i);
-                        auto it = find(kmerSpace.begin(), kmerSpace.end(), i.read);
+                        auto it = find(kmerSpace.begin(), kmerSpace.end(), i >> 2);
                         if ( it != kmerSpace.end() )
                         {
                             kmerSpace.erase(it);
@@ -243,13 +254,13 @@ int main()
             }
             else
             {
-                for ( auto &i : kPlus1mers[Q[0].read] )
+                for ( auto &i : kPlus1mers[Q[0] >> 2] )
                 {
-                    if (dist_kmer[i.read] > dist_kPlus1mer[Q[0].read] + 1)
+                    if (dist_kmer[i >> 2] > dist_kPlus1mer[Q[0] >> 2] + 1)
                     {
-                        dist_kmer[i.read] = dist_kPlus1mer[Q[0].read] + 1;
+                        dist_kmer[i >> 2] = dist_kPlus1mer[Q[0] >> 2] + 1;
                         Q.push_back(i);
-                        auto it = find(kmerSpace.begin(), kmerSpace.end(), i.read);
+                        auto it = find(kmerSpace.begin(), kmerSpace.end(), i >> 2);
                         if ( it != kmerSpace.end() )
                         {
                             kmerSpace.erase(it);
