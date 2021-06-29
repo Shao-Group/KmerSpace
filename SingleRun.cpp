@@ -77,9 +77,36 @@ void removeDuplicates( vector<unsigned long int> &temp )
 }
 
 /*
- * Find and erase an element from the k-mer space. In order to be faster, we start
- * finding from the position of the last target of this function and iterate forward
- * or backward.
+ * Binary search for a k-mer
+ */
+unsigned long int binarySearch(vector<unsigned long int> &kmerSpace,
+                               unsigned long int first,
+                               unsigned long int last,
+                               unsigned long int enc)
+{
+    if (first > last)
+    {
+        return kmerSpace.size();
+    }
+
+    unsigned long int middle = (first + last) / 2;
+    if ( kmerSpace[middle] == enc )
+    {
+        return middle;
+    }
+    if ( kmerSpace[middle] < enc )
+    {
+        return binarySearch(kmerSpace, middle + 1, last, enc);
+    }
+    else
+    {
+        return binarySearch(kmerSpace, first, middle - 1, enc);
+    }
+}
+
+/*
+ * Find and erase an element from the k-mer space. In order to be faster, we use binary
+ * search and start searching from the position of the last target of this function.
  *
  * kmerSpace: The k-mer space
  * enc      : The binary encoding of the k-mer to be erased
@@ -95,40 +122,31 @@ void findAndErase( vector<unsigned long int> &kmerSpace,
     }
     if ( lastFound >= kmerSpace.size() - 1 )
     {
-        for (unsigned long int i = kmerSpace.size() - 1; i >= 0 ; --i)
+        unsigned long int target = binarySearch( kmerSpace, 0, kmerSpace.size() - 1, enc );
+        if ( target < kmerSpace.size() )
         {
-            if ( kmerSpace[i] == enc )
-            {
-                kmerSpace.erase( kmerSpace.begin() + i );
-                lastFound = i;
-                return;
-            }
+            kmerSpace.erase( kmerSpace.begin() + target );
+            lastFound = target;
         }
         return;
     }
 
     if ( kmerSpace[lastFound] < enc )
     {
-        for (unsigned long int i = lastFound; i < kmerSpace.size(); ++i)
+        unsigned long int target = binarySearch( kmerSpace, lastFound, kmerSpace.size() - 1, enc );
+        if ( target < kmerSpace.size() )
         {
-            if ( kmerSpace[i] == enc )
-            {
-                kmerSpace.erase( kmerSpace.begin() + i );
-                lastFound = i;
-                return;
-            }
+            kmerSpace.erase( kmerSpace.begin() + target );
+            lastFound = target;
         }
     }
     else
     {
-        for (unsigned long int i = lastFound; i >= 0; --i)
+        unsigned long int target = binarySearch( kmerSpace, 0, lastFound, enc );
+        if ( target < kmerSpace.size() )
         {
-            if ( kmerSpace[i] == enc )
-            {
-                kmerSpace.erase( kmerSpace.begin() + i );
-                lastFound = i;
-                return;
-            }
+            kmerSpace.erase( kmerSpace.begin() + target );
+            lastFound = target;
         }
     }
 }
