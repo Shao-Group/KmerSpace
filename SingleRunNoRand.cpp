@@ -55,7 +55,7 @@ void printKmer(unsigned long int enc, int k)
         enc = enc >> 2;
         kmer[i] = base[enc & 3];
     }
-    cerr << kmer;
+    cout << kmer;
 }
 
 /*
@@ -153,12 +153,12 @@ int main()
 {
     int k;
     int d;
-    cerr << "Please enter k: ";
+    cout << "Please enter k: ";
     cin >> k;
-    cerr << k << endl;
-    cerr << "Plesae enter d: ";
+    cout << k << endl;
+    cout << "Plesae enter d: ";
     cin >> d;
-    cerr << d << endl;
+    cout << d << endl;
 
     // Generate the k-mer space
     unsigned long int num_kmers = 1;
@@ -177,7 +177,7 @@ int main()
     vector<int> dist_kPlus1mer(num_kPlus1mers, d + 1);
 
     int num_indep_nodes = 0;
-    cerr << "\nList of independent nodes: " << endl;
+    cout << "\nList of independent nodes: " << endl;
     for (unsigned long int i = 0; i < num_kmers; ++i)
     {
         if ( kmerSpace[i] )
@@ -185,7 +185,7 @@ int main()
             continue;
         }
         printKmer(i << 2, k);
-        cerr << ' ';
+        cout << ' ';
         num_indep_nodes++;
         kmerSpace[i] = true;
 
@@ -257,7 +257,7 @@ int main()
         }
     }
 
-    cerr << "\nThe graph has an independent set of size " << num_indep_nodes << ".\n";
+    cout << "\nThe graph has an independent set of size " << num_indep_nodes << ".\n";
 
     return 0;
 }
