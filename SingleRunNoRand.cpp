@@ -11,12 +11,12 @@
  * of G constructed above.
  *
  * We can try a greedy algorithm. We first generate K. We then iteratively pick a kmer x
- * from K, and remove x and all other kmers whose edit distance with x is at most d; we 
- * repeat this procedure until K becomes empty. In order to save time, we do not do 
- * simple pairwise comparison to find the edit distance. Instead, we build a graph 
- * containing all possible k-mers, (k-1)-mers, and (k+1)-mers as vertices. If the edit 
+ * from K, and remove x and all other kmers whose edit distance with x is at most d; we
+ * repeat this procedure until K becomes empty. In order to save time, we do not do
+ * simple pairwise comparison to find the edit distance. Instead, we build a graph
+ * containing all possible k-mers, (k-1)-mers, and (k+1)-mers as vertices. If the edit
  * distance between any two vertices is 1, we add an edge of length 1 between the two
- * vertices. Then, we add the picked vertex to the MIS, explore all vertices at a 
+ * vertices. Then, we add the picked vertex to the MIS, explore all vertices at a
  * distance less than or equal to d from it using BFS, and remove them from K. We would
  * not do redundant exploration if we detected that a vertex was already explored via a
  * shorter path from another vertex in the MIS.
@@ -30,13 +30,12 @@
  * k + 1.
  *
  * Author: Leran Ma (lkm5463@psu.edu)
+ * Date:   7:15 PM, Saturday, July 3, 2021
  */
 
 #include <iostream>
 #include <vector>
 #include <map>
-#include <ctime>
-#include <algorithm>
 
 using namespace std;
 
@@ -56,63 +55,32 @@ void printKmer(unsigned long int enc, int k)
         enc = enc >> 2;
         kmer[i] = base[enc & 3];
     }
-    cout << kmer;
+    cerr << kmer;
 }
 
 /*
- * Remove duplicate elements within a vector
+ * Gets neighbors of a vertex
+ *
+ * enc : The binary encoding of the k-mer
+ * k   : The length of the k-mer
+ * temp: A vector to hold the neighbors
  */
-void removeDuplicates( vector<unsigned long int> &temp )
+void getNeighbor( unsigned long int enc, int k, vector<unsigned long int> &temp )
 {
+    unsigned long int i = enc >> 2;
+
+    // First store neighbors in a map to avoid duplication
     map<unsigned long int, bool> m;
-    for ( unsigned long &i : temp )
-    {
-        m.emplace( i, true );
-    }
-    temp.clear();
-    for ( auto &i : m )
-    {
-        temp.push_back( i.first );
-    }
-}
-
-int main()
-{
-    int k;
-    int d;
-    cout << "Please enter k: ";
-    cin >> k;
-    cout << k << endl;
-    cout << "Plesae enter d: ";
-    cin >> d;
-    cout << d << endl;
-
-    // Generate the k-mer space
-    unsigned long int num_kmers = 1;
-    num_kmers = num_kmers << (2 * k);
-    vector<bool> kmerSpace(num_kmers, false);
-
-    // Generate the adjacency list
-    vector<unsigned long int> temp;
-    vector< vector<unsigned long int> > kmers( num_kmers, temp );
-
-    unsigned long int num_kMinus1mers = 1;
-    num_kMinus1mers = num_kMinus1mers << (2 * (k - 1));
-    vector< vector<unsigned long int> > kMinus1mers( num_kMinus1mers, temp );
-
-    unsigned long int num_kPlus1mers = 1;
-    num_kPlus1mers = num_kPlus1mers << (2 * (k + 1));
-    vector< vector<unsigned long int> > kPlus1mers( num_kPlus1mers, temp );
 
     // Populate the adjacency list for kmers
-    for (unsigned long int i = 0; i < num_kmers; ++i)
+    if ( (enc & 3) == 1 )
     {
         // Handle deletion
         for (int j = 1; j <= k; ++j)
         {
             unsigned long int head = (i >> (2 * j)) << (2 * (j - 1));
             unsigned long int tail = (i << 1 << (63 - 2 * (j - 1))) >> (63 - 2 * (j - 1)) >> 1;
-            kmers[i].push_back( (head + tail) << 2 );
+            m.emplace( (head + tail) << 2, true );
         }
 
         // Handle insertion
@@ -124,7 +92,7 @@ int main()
             {
                 unsigned long int body = l << (2 * j);
                 unsigned long int node = head + body + tail;
-                kmers[i].push_back( (node << 2) | 2 );
+                m.emplace( (node << 2) | 2, true );
             }
         }
 
@@ -139,16 +107,14 @@ int main()
                 unsigned long int node = head + body + tail;
                 if ( node != i )
                 {
-                    kmers[i].push_back( (node << 2) | 1 );
+                    m.emplace( (node << 2) | 1, true );
                 }
             }
         }
-
-        removeDuplicates( kmers[i] );
     }
 
     // Populate the adjacency list for kMinus1mers
-    for ( unsigned long int i = 0; i < num_kMinus1mers; ++i )
+    else if ( (enc & 3) == 0 )
     {
         // Handle insertion
         for (int j = 0; j <= k - 1; ++j)
@@ -159,14 +125,13 @@ int main()
             {
                 unsigned long int body = l << (2 * j);
                 unsigned long int node = head + body + tail;
-                kMinus1mers[i].push_back( (node << 2) | 1 );
+                m.emplace( (node << 2) | 1, true );
             }
         }
-        removeDuplicates( kMinus1mers[i] );
     }
 
     // Populate the adjacency list for kPlus1mers
-    for ( unsigned long int i = 0; i < num_kPlus1mers; ++i )
+    else
     {
         // Handle deletion
         for (int j = 1; j <= k + 1; ++j)
@@ -174,19 +139,45 @@ int main()
             unsigned long int head = (i >> (2 * j)) << (2 * (j - 1));
             unsigned long int tail = (i << 1 << (63 - 2 * (j - 1))) >> (63 - 2 * (j - 1)) >> 1;
             unsigned long int node = head + tail;
-            kPlus1mers[i].push_back( (node << 2) | 1 );
+            m.emplace( (node << 2) | 1, true );
         }
-        removeDuplicates( kPlus1mers[i] );
     }
+
+    for ( auto &j : m )
+    {
+        temp.push_back( j.first );
+    }
+}
+
+int main()
+{
+    int k;
+    int d;
+    cerr << "Please enter k: ";
+    cin >> k;
+    cerr << k << endl;
+    cerr << "Plesae enter d: ";
+    cin >> d;
+    cerr << d << endl;
+
+    // Generate the k-mer space
+    unsigned long int num_kmers = 1;
+    num_kmers = num_kmers << (2 * k);
+    vector<bool> kmerSpace(num_kmers, false);
 
     // Initialize the dist array for BFS
     vector<int> dist_kmer(num_kmers, d + 1);
+
+    unsigned long int num_kMinus1mers = 1;
+    num_kMinus1mers = num_kMinus1mers << (2 * (k-1));
     vector<int> dist_kMinus1mer(num_kMinus1mers, d + 1);
+
+    unsigned long int num_kPlus1mers = 1;
+    num_kPlus1mers = num_kPlus1mers << (2 * (k+1));
     vector<int> dist_kPlus1mer(num_kPlus1mers, d + 1);
 
-    srand( time(nullptr) );
     int num_indep_nodes = 0;
-    cout << "List of independent nodes: " << endl;
+    cerr << "\nList of independent nodes: " << endl;
     for (unsigned long int i = 0; i < num_kmers; ++i)
     {
         if ( kmerSpace[i] )
@@ -194,7 +185,7 @@ int main()
             continue;
         }
         printKmer(i << 2, k);
-        cout << ' ';
+        cerr << ' ';
         num_indep_nodes++;
         kmerSpace[i] = true;
 
@@ -204,11 +195,14 @@ int main()
         dist_kmer[i] = 0;
         while ( !Q.empty() )
         {
+            vector<unsigned long int> neighbors;
+            getNeighbor( Q[0], k, neighbors );
+
             if ( (Q[0] & 3) == 1 )
             {
-                for ( auto &j : kmers[Q[0] >> 2] )
+                for ( auto &j : neighbors )
                 {
-                    if ((j & 3) == 1 )
+                    if ( (j & 3) == 1 )
                     {
                         if (dist_kmer[j >> 2] > dist_kmer[Q[0] >> 2] + 1)
                         {
@@ -237,7 +231,7 @@ int main()
             }
             else if ( (Q[0] & 3) == 0 )
             {
-                for ( auto &j : kMinus1mers[Q[0] >> 2] )
+                for ( auto &j : neighbors )
                 {
                     if (dist_kmer[j >> 2] > dist_kMinus1mer[Q[0] >> 2] + 1)
                     {
@@ -249,7 +243,7 @@ int main()
             }
             else
             {
-                for ( auto &j : kPlus1mers[Q[0] >> 2] )
+                for ( auto &j : neighbors )
                 {
                     if (dist_kmer[j >> 2] > dist_kPlus1mer[Q[0] >> 2] + 1)
                     {
@@ -263,7 +257,7 @@ int main()
         }
     }
 
-    cout << "\nThe graph has an independent set of size " << num_indep_nodes << ".\n";
+    cerr << "\nThe graph has an independent set of size " << num_indep_nodes << ".\n";
 
     return 0;
 }
