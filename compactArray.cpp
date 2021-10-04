@@ -274,8 +274,7 @@ int main()
             auto q0 = hist.find( Q[0] );
             if ( q0->second + 1 > d )
             {
-                Q.erase( Q.begin() );
-                continue;
+                break;
             }
             unordered_set<unsigned long int> neighbors;
             getNeighbor( Q[0], k, neighbors );
