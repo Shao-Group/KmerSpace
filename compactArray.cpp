@@ -48,8 +48,10 @@ using namespace std;
 class DistArray
 {
 private:
-    char *aptr;         // Pointer to the array
-    unsigned int max_d; // Maximum edit distance allowed
+    char *aptr1;            // Pointer to the first half of the array
+    char *aptr2;            // Pointer to the second half of the array
+    unsigned long int size; // Size of the array in bytes
+    unsigned int max_d;     // Maximum edit distance allowed
 
 public:
     /*
@@ -59,7 +61,9 @@ public:
      */
     DistArray( unsigned long int s, unsigned int d )
     {
-        aptr = (char *) calloc(s / 4, sizeof(char));
+        size = s / 4;
+        aptr1 = (char *) calloc(size / 2, sizeof(char));
+        aptr2 = (char *) calloc(size / 2, sizeof(char));
         max_d = d;
     }
 
@@ -68,7 +72,8 @@ public:
      */
     ~DistArray()
     {
-        free( aptr );
+        free( aptr1 );
+        free( aptr2 );        
     }
 
     /*
@@ -78,14 +83,22 @@ public:
      */
     unsigned int operator[]( const unsigned long int &sub )
     {
-        // Find the byte in which the required element is located
-        unsigned long int bytePos = sub / 4;
-
         // Find the bit offset
         int offset = sub % 4;
 
+        // Find the byte in which the required element is located
+        unsigned long int bytePos = sub / 4;
+
         unsigned int dist;
-        memcpy( &dist, &aptr[bytePos], 1 );
+        if ( bytePos < size / 2 )
+        {
+            memcpy( &dist, &aptr1[bytePos], 1 );
+        }
+        else
+        {
+            memcpy( &dist, &aptr2[bytePos - size/2], 1 );
+        }
+
         dist = (dist << (24 + 2 * offset)) >> 30;
         return dist + (max_d + 1)/2 - 1;
     }
@@ -110,17 +123,35 @@ public:
         // Find the bit offset
         int offset = sub % 4;
 
-        unsigned int tempByte;
-        memcpy( &tempByte, &aptr[bytePos], 1 );
-        unsigned int head = tempByte >> ((4 - offset) * 2);
-        head = head << ((4 - offset) * 2);
-        unsigned int tail = tempByte << 24 << ((offset + 1) * 2);
-        tail = tail >> 24 >> ((offset + 1) * 2);
-        tempByte = tempByte & (head | tail);
-        unsigned int body = dist;
-        body = body << ((3 - offset) * 2);
-        tempByte = tempByte | body;
-        memcpy( &aptr[bytePos], &tempByte, 1 );
+        if ( bytePos < size/2 )
+        {
+            unsigned int tempByte;
+            memcpy( &tempByte, &aptr1[bytePos], 1 );
+            unsigned int head = tempByte >> ((4 - offset) * 2);
+            head = head << ((4 - offset) * 2);
+            unsigned int tail = tempByte << 24 << ((offset + 1) * 2);
+            tail = tail >> 24 >> ((offset + 1) * 2);
+            tempByte = tempByte & (head | tail);
+            unsigned int body = dist;
+            body = body << ((3 - offset) * 2);
+            tempByte = tempByte | body;
+            memcpy( &aptr1[bytePos], &tempByte, 1 );
+        }
+        else
+        {
+            bytePos -= size/2;
+            unsigned int tempByte;
+            memcpy( &tempByte, &aptr2[bytePos], 1 );
+            unsigned int head = tempByte >> ((4 - offset) * 2);
+            head = head << ((4 - offset) * 2);
+            unsigned int tail = tempByte << 24 << ((offset + 1) * 2);
+            tail = tail >> 24 >> ((offset + 1) * 2);
+            tempByte = tempByte & (head | tail);
+            unsigned int body = dist;
+            body = body << ((3 - offset) * 2);
+            tempByte = tempByte | body;
+            memcpy( &aptr2[bytePos], &tempByte, 1 );
+        }
     }
 };
 
