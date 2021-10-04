@@ -48,7 +48,8 @@ using namespace std;
 class DistArray
 {
 private:
-    char *aptr; // Pointer to the array
+    char *aptr;         // Pointer to the array
+    unsigned int max_d; // Maximum edit distance allowed
 
 public:
     /*
@@ -56,9 +57,10 @@ public:
      *
      * s: total number of elements
      */
-    DistArray(unsigned long int s)
+    DistArray(unsigned long int s, unsigned int d )
     {
         aptr = (char *) calloc(s / 4, sizeof(char));
+        max_d = d;
     }
 
     /*
@@ -84,25 +86,22 @@ public:
 
         unsigned int dist;
         memcpy( &dist, &aptr[bytePos], 1 );
-        return ((dist << (24 + 2 * offset)) >> 30);
+        dist = (dist << (24 + 2 * offset)) >> 30;
+        return dist + (max_d + 1)/2 - 1;
     }
     
     /*
      * Set the dist value for an element indexed by sub
      *
-     * sub: The index of the element
-     * d  : The dist value of the element
+     * sub : The index of the element
+     * dist: The dist value of the element
      */
-    void setDist( const unsigned long int sub, const int d )
+    void setDist( const unsigned long int sub, int dist )
     {
-        unsigned int dist;
-        if (d < 2)
+        dist = dist + 1 - (max_d + 1)/2;
+        if (dist < 2)
         {
             dist = 1;
-        }
-        else
-        {
-            dist = d;
         }
 
         // Find the byte in which the required element is located
@@ -118,7 +117,8 @@ public:
         unsigned int tail = tempByte << 24 << ((offset + 1) * 2);
         tail = tail >> 24 >> ((offset + 1) * 2);
         tempByte = tempByte & (head | tail);
-        unsigned int body = dist << ((3 - offset) * 2);
+        unsigned int body = dist;
+        body = body << ((3 - offset) * 2);
         tempByte = tempByte | body;
         memcpy( &aptr[bytePos], &tempByte, 1 );
     }
@@ -240,21 +240,21 @@ int main()
     // Initialize dist arrays for BFS
     unsigned long int num_kmers = 1;
     num_kmers = num_kmers << (2 * k);
-    DistArray dist_kmer(num_kmers);
+    DistArray dist_kmer(num_kmers, d);
 
     unsigned long int num_kMinus1mers = 1;
     num_kMinus1mers = num_kMinus1mers << (2 * (k-1));
-    DistArray dist_kMinus1mer(num_kMinus1mers);
+    DistArray dist_kMinus1mer(num_kMinus1mers, d);
 
     unsigned long int num_kPlus1mers = 1;
     num_kPlus1mers = num_kPlus1mers << (2 * (k+1));
-    DistArray dist_kPlus1mer(num_kPlus1mers);
+    DistArray dist_kPlus1mer(num_kPlus1mers, d);
 
     unsigned long int num_indep_nodes = 0;
     cerr << "\nList of independent nodes: " << endl;
     for ( unsigned long int i = 0; i < num_kmers; ++i )
     {
-        if ( dist_kmer[i] )
+        if ( dist_kmer[i] != (d + 1)/2 - 1 )
         {
             continue;
         }
@@ -268,7 +268,7 @@ int main()
         unordered_map<unsigned long int, unsigned int> hist; // Keep the search history
         hist.emplace( (i << 2) | 1, 0 );
 
-        dist_kmer.setDist(i, 1);
+        dist_kmer.setDist(i, 0);
         while ( !Q.empty() )
         {
             auto q0 = hist.find( Q[0] );
@@ -284,36 +284,39 @@ int main()
             {
                 for ( auto &j : neighbors )
                 {
+                    if ( hist.find(j) != hist.end() )
+                    {
+                        continue;
+                    }
                     if ( (j & 3) == 1 )
                     {
-                        //printKmer(j >> 2, k);
-                        //cout << dist_kmer[j >> 2] << endl;
-                        if ( dist_kmer[j >> 2] == 0 || 
-                             dist_kmer[j >> 2] + (d + 1)/2 - 1 > q0->second + 1 )
+                        if ( dist_kmer[j >> 2] == (d + 1)/2 - 1 || 
+                             (dist_kmer[j >> 2] != (d + 1)/2 &&
+                              dist_kmer[j >> 2] > q0->second + 1) )
                         {
-                            dist_kmer.setDist(j >> 2, q0->second + 2 - (d + 1)/2);
-                            //cout << dist_kmer[j >> 2] << endl;
+                            dist_kmer.setDist(j >> 2, q0->second + 1);
                             Q.push_back(j);
                             hist.emplace( j, q0->second + 1 );
-                            //cout << dist_kmer[j >> 2] + (d + 1)/2 - 1 << endl;
                         }
                     }
                     else if ( (j & 3) == 0 )
                     {
-                        if ( dist_kMinus1mer[j >> 2] == 0 || 
-                             dist_kMinus1mer[j >> 2] + (d + 1)/2 - 1 > q0->second + 1 )
+                        if ( dist_kMinus1mer[j >> 2] == (d + 1)/2 - 1 || 
+                             (dist_kMinus1mer[j >> 2] != (d + 1)/2 &&
+                              dist_kMinus1mer[j >> 2] > q0->second + 1) )
                         {
-                            dist_kMinus1mer.setDist(j >> 2, q0->second + 2 - (d + 1)/2);
+                            dist_kMinus1mer.setDist(j >> 2, q0->second + 1);
                             Q.push_back(j);
                             hist.emplace( j, q0->second + 1 );
                         }
                     }
                     else
                     {
-                        if ( dist_kPlus1mer[j >> 2] == 0 || 
-                             dist_kPlus1mer[j >> 2] + (d + 1)/2 - 1 > q0->second + 1 )
+                        if ( dist_kPlus1mer[j >> 2] == (d + 1)/2 - 1 ||
+                             (dist_kPlus1mer[j >> 2] != (d + 1)/2 && 
+                              dist_kPlus1mer[j >> 2] > q0->second + 1) )
                         {
-                            dist_kPlus1mer.setDist(j >> 2, q0->second + 2 - (d + 1)/2);
+                            dist_kPlus1mer.setDist(j >> 2, q0->second + 1);
                             Q.push_back(j);
                             hist.emplace( j, q0->second + 1 );
                         }
@@ -324,10 +327,15 @@ int main()
             {
                 for ( auto &j : neighbors )
                 {
-                    if ( dist_kmer[j >> 2] == 0 || 
-                         dist_kmer[j >> 2] + (d + 1)/2 - 1 > q0->second + 1 )
+                    if ( hist.find(j) != hist.end() )
                     {
-                        dist_kmer.setDist(j >> 2, q0->second + 2 - (d + 1)/2);
+                        continue;
+                    }
+                    if ( dist_kmer[j >> 2] == (d + 1)/2 - 1 || 
+                         (dist_kmer[j >> 2] != (d + 1)/2 &&
+                          dist_kmer[j >> 2] > q0->second + 1) )
+                    {
+                        dist_kmer.setDist(j >> 2, q0->second + 1);
                         Q.push_back(j);
                         hist.emplace( j, q0->second + 1 );
                     }
