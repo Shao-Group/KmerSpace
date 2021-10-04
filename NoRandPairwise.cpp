@@ -97,8 +97,10 @@ int main()
     int d;
     cerr << "Please enter k: ";
     cin >> k;
+    cerr << k << endl;
     cerr << "Plesae enter d: ";
     cin >> d;
+    cerr << d << endl;
 
     unsigned long int kmerSpaceSize = 1;
     kmerSpaceSize = kmerSpaceSize << (2 * k);
