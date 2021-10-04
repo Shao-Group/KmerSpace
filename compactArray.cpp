@@ -57,7 +57,7 @@ public:
      *
      * s: total number of elements
      */
-    DistArray(unsigned long int s, unsigned int d )
+    DistArray( unsigned long int s, unsigned int d )
     {
         aptr = (char *) calloc(s / 4, sizeof(char));
         max_d = d;
@@ -130,7 +130,7 @@ public:
  * enc: The binary encoding of the k-mer
  * k  : The length of the k-mer
  */
-void printKmer(unsigned long int enc, int k)
+void printKmer( unsigned long int enc, int k )
 {
     char base[4] = {'A', 'C', 'G', 'T'};
     char kmer[k + 1];
@@ -288,11 +288,13 @@ int main()
                     {
                         continue;
                     }
+                    unsigned int targetDist;
                     if ( (j & 3) == 1 )
                     {
-                        if ( dist_kmer[j >> 2] == (d + 1)/2 - 1 || 
-                             (dist_kmer[j >> 2] != (d + 1)/2 &&
-                              dist_kmer[j >> 2] > q0->second + 1) )
+                        targetDist = dist_kmer[j >> 2];
+                        if ( targetDist == (d + 1)/2 - 1 ||
+                             (targetDist != (d + 1)/2 &&
+                              targetDist > q0->second + 1) )
                         {
                             dist_kmer.setDist(j >> 2, q0->second + 1);
                             Q.push_back(j);
@@ -301,9 +303,10 @@ int main()
                     }
                     else if ( (j & 3) == 0 )
                     {
-                        if ( dist_kMinus1mer[j >> 2] == (d + 1)/2 - 1 || 
-                             (dist_kMinus1mer[j >> 2] != (d + 1)/2 &&
-                              dist_kMinus1mer[j >> 2] > q0->second + 1) )
+                        targetDist = dist_kMinus1mer[j >> 2];
+                        if ( targetDist == (d + 1)/2 - 1 ||
+                             (targetDist != (d + 1)/2 &&
+                              targetDist > q0->second + 1) )
                         {
                             dist_kMinus1mer.setDist(j >> 2, q0->second + 1);
                             Q.push_back(j);
@@ -312,9 +315,10 @@ int main()
                     }
                     else
                     {
-                        if ( dist_kPlus1mer[j >> 2] == (d + 1)/2 - 1 ||
-                             (dist_kPlus1mer[j >> 2] != (d + 1)/2 && 
-                              dist_kPlus1mer[j >> 2] > q0->second + 1) )
+                        targetDist = dist_kPlus1mer[j >> 2];
+                        if ( targetDist == (d + 1)/2 - 1 ||
+                             (targetDist != (d + 1)/2 && 
+                              targetDist > q0->second + 1) )
                         {
                             dist_kPlus1mer.setDist(j >> 2, q0->second + 1);
                             Q.push_back(j);
@@ -331,9 +335,10 @@ int main()
                     {
                         continue;
                     }
-                    if ( dist_kmer[j >> 2] == (d + 1)/2 - 1 || 
-                         (dist_kmer[j >> 2] != (d + 1)/2 &&
-                          dist_kmer[j >> 2] > q0->second + 1) )
+                    unsigned int targetDist = dist_kmer[j >> 2];
+                    if ( targetDist == (d + 1)/2 - 1 || 
+                         (targetDist != (d + 1)/2 &&
+                          targetDist > q0->second + 1) )
                     {
                         dist_kmer.setDist(j >> 2, q0->second + 1);
                         Q.push_back(j);
