@@ -325,8 +325,6 @@ int main()
     num_kPlus1mers = num_kPlus1mers << (2 * (k+1));
     DistArray dist_kPlus1mer(num_kPlus1mers, d);
 
-    reportPerformance();
-
     unsigned long int num_indep_nodes = 0;
     cerr << "\nList of independent nodes: " << endl;
     for ( unsigned long int i = 0; i < num_kmers; ++i )
