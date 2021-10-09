@@ -24,6 +24,10 @@
 
 #include <iostream>
 #include <vector>
+#include <unistd.h>
+#include <ios>
+#include <fstream>
+#include <string>
 
 using namespace std;
 
