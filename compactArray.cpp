@@ -39,6 +39,10 @@
 #include <unordered_set>
 #include <unordered_map>
 #include <vector>
+#include <unistd.h>
+#include <ios>
+#include <fstream>
+#include <string>
 
 using namespace std;
 
@@ -257,6 +261,46 @@ void getNeighbor( unsigned long int enc, int k, unordered_set<unsigned long int>
     }
 }
 
+/*
+ * Reports the time and space usage
+ */
+void reportPerformance()
+{
+    string temp;
+    unsigned long int utime, stime, vmpeak, vmhwm;
+
+    // Find time usage in "/proc/self/stat"
+    ifstream time_stream("/proc/self/stat", ios_base::in);
+
+    // Skip all irrelevant attributes
+    for (int i = 0; i < 13; ++i)
+    {
+        time_stream >> temp;
+    }
+
+    time_stream >> utime >> stime;
+    time_stream.close();
+
+    // Find space usage in "/proc/self/status"
+    ifstream space_stream("/proc/self/status", ios_base::in);
+    while ( temp.compare("VmPeak:") != 0 )
+    {
+        space_stream >> temp;
+    }
+    space_stream >> vmpeak;
+    while ( temp.compare("VmHWM:") != 0 )
+    {
+        space_stream >> temp;
+    }
+    space_stream >> vmhwm;
+    space_stream.close();
+
+    cerr << "Time in user mode:        " << utime / sysconf(_SC_CLK_TCK) << " sec\n"
+         << "Time in kernel mode:      " << stime / sysconf(_SC_CLK_TCK) << " sec\n"
+         << "Peak virtual memory size: " << vmpeak << " kB\n"
+         << "Peak resident set size:   " << vmhwm << " kB\n\n";
+}
+
 int main()
 {
     int k;
@@ -280,6 +324,8 @@ int main()
     unsigned long int num_kPlus1mers = 1;
     num_kPlus1mers = num_kPlus1mers << (2 * (k+1));
     DistArray dist_kPlus1mer(num_kPlus1mers, d);
+
+    reportPerformance();
 
     unsigned long int num_indep_nodes = 0;
     cerr << "\nList of independent nodes: " << endl;
@@ -380,7 +426,8 @@ int main()
         }
     }
 
-    cerr << "\nThe graph has an independent set of size " << num_indep_nodes << ".\n";
+    cerr << "\nThe graph has an independent set of size " << num_indep_nodes << ".\n\n";
+    reportPerformance();
 
     return 0;
 }
