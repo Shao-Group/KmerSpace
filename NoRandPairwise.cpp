@@ -10,9 +10,9 @@
  * The input for this problem is two integers k and d; the output is an independent set
  * of G constructed above.
  *
- * We can try a simple greedy algorithm. We first generate K. We then iteratively and
- * pick a kmer x from K, and remove x and all other kmers whose edit distance with x is
- * at most d; we repeat this procedure until K becomes empty.
+ * We use a simple greedy algorithm. We first generate K. We then iteratively pick a kmer
+ * x from K, remove x, and check if x is covered by any kmer in the current MIS. If not,
+ * we add x to the MIS. We repeat this procedure until K becomes empty.
  * --------------------------------------------------------------------------------------
  *
  * In the program, the author uses a binary encoding {00, 01, 10, 11} for the alphabet
