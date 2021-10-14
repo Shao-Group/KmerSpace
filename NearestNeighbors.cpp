@@ -23,15 +23,82 @@
  */
 
 #include <iostream>
-#include <vector>
+#include <cstdlib>
+#include <cstring>
 #include <unordered_set>
-#include <unordered_map>
+#include <vector>
 #include <unistd.h>
 #include <ios>
 #include <fstream>
 #include <string>
 
 using namespace std;
+
+/*
+ * A data structure to store the coveage information for kmers
+ */
+class CoverageArray
+{
+private:
+    char *aptr;             // Pointer to first half of the array
+    char *aptr2;            // Pointer to second half of the array
+    unsigned long int size; // The capacity of the array
+
+public:
+    /*
+     * Constructor
+     *
+     * s: capacity of the array
+     */
+    CoverageArray( unsigned long int s )
+    {
+        aptr = (char *) calloc(s * 5 / 2, sizeof(char));
+        aptr2 = (char *) calloc(s * 5 / 2, sizeof(char));
+        size = s;
+    }
+
+    /*
+     * Overload [] operator to return the coverage of the kmer indexed by sub
+     *
+     * sub: The index of the element to be extract
+     */
+    unsigned long int operator[]( const unsigned long int &sub )
+    {
+        // Find the byte position where the required element is located
+        unsigned long int bytePos = (sub % size) * 5;
+
+        unsigned long int cov = 0;
+        if ( bytePos < size * 5 / 2 )
+        {
+            memcpy( &cov, &aptr[bytePos], 5 );
+        }
+        else
+        {
+            memcpy( &cov, &aptr2[bytePos - size*5/2], 5 );
+        }
+        return cov;
+    }
+    
+    /*
+     * Set the coverage for an element indexed by sub
+     *
+     * sub: The index of the element
+     * cov: The coverage of the element
+     */
+    void setCov( const unsigned long int sub, unsigned long int cov )
+    {
+        // Find the byte position where the required element is located
+        unsigned long int bytePos = (sub % size) * 5;
+        if ( bytePos < size * 5 / 2 )
+        {
+            memcpy( &aptr[bytePos], &cov, 5 );
+        }
+        else
+        {
+            memcpy( &aptr2[bytePos - size*5/2], &cov, 5 );
+        }
+    }
+};
 
 /*
  * Calculates the edit distance between 2 k-mers
@@ -98,14 +165,17 @@ void printKmer( unsigned long int enc, int k )
 }
 
 /*
- * Gets neighbors of a vertex
+ * Asks neighbors for possible coverage. Returns true if a feasible answer is found.
  *
- * enc: The binary encoding of the k-mer
- * k  : The length of the k-mer
- * n  : A unordered_set to hold the neighbors
+ * enc     : The binary encoding of the k-mer
+ * k       : The length of the k-mer
+ * d       : The maximum edit distance allowed
+ * coverage: The coverage array
  */
-void getNeighbors( unsigned long int enc, int k, unordered_set<unsigned long int> &n )
+bool askNeighbors( const unsigned long int enc, const int k, const int d, CoverageArray &coverage )
 {
+    unordered_set<unsigned long int> asked;   // A set to store asked neighbors
+    unordered_set<unsigned long int> checked; // A set to store checked possibilities
     for ( int j = 1; j <= k; ++j )
     {
         unsigned long int head = (enc >> (2 * j)) << (2 * j);
@@ -114,9 +184,18 @@ void getNeighbors( unsigned long int enc, int k, unordered_set<unsigned long int
         {
             unsigned long int body = l << (2 * (j - 1));
             unsigned long int node = head + body + tail;
-            n.emplace( node );
+            if ( asked.emplace(node).second )
+            {
+                unsigned long int temp = coverage[node];
+                if ( checked.emplace(temp).second && editDist(temp, enc, k, d) <= d )
+                {
+                    coverage.setCov(enc, temp);
+                    return true;
+                }
+            }
         }
     }
+    return false;
 }
 
 /*
@@ -175,41 +254,25 @@ int main()
 
     vector<unsigned long int> MIS;
     MIS.push_back( 0 );
-    unordered_map<unsigned long int, unsigned long int> coverage;
-    coverage.emplace( 0, 0 );
+    CoverageArray coverage(kmerSpaceSize / 4);
+    coverage.setCov( 0, 0 );
     cerr << "\nList of independent nodes: " << endl;
     printKmer( 0, k );
     cerr << ' ';
-    bool isCovered;
-    unordered_set<unsigned long int> neighbors;
+    bool isCovered = false;
 
     for ( unsigned long int i = 1; i < kmerSpaceSize; ++i )
     {
-        neighbors.clear();
-        getNeighbors( i, k, neighbors );
-        for ( const unsigned long int &j : neighbors )
+        if ( askNeighbors(i, k, d, coverage) )
         {
-            if ( j < i )
-            {
-                if ( editDist(coverage[j], i, k, d) <= d )
-                {
-                    coverage[i] = coverage[j];
-                    isCovered = true;
-                    break;
-                }
-            }
-        }
-        if ( isCovered )
-        {
-            isCovered = false;
             continue;
         }
 
         for ( const unsigned long int &j : MIS )
         {
-            if ( editDist(j, i, k, d) <= d )
+            if ( editDist(i, j, k, d) <= d )
             {
-                coverage[i] = j;
+                coverage.setCov(i, j);
                 isCovered = true;
                 break;
             }
@@ -222,7 +285,7 @@ int main()
         printKmer( i, k );
         cerr << ' ';
         MIS.push_back( i );
-        coverage[i] = i;
+        coverage.setCov( i, i );
     }
 
     cerr << "\nThe graph has an independent set of size " << MIS.size() << ".\n\n";
