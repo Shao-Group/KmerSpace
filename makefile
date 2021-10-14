@@ -16,9 +16,15 @@ product: $(ALLDEP) partitionByLayers.out
 %.o: %.c makefile
 	$(CC) $(CFLAGS) -MMD -c $< -o $@
 
-%.MaxID: %.txt
-	grep -oE '[0-9]+' $^ | tail -1 > $@; \
-	sed -n '7 s/\r$$//p' $^ | sed 's/ /\n/g' >> $@
+%.MaxID: %.txt makefile
+	grep -oE '[0-9]+' $< | tail -1 > $@; \
+	#sed -n '7 s/\r$$//p' $< | sed 's/ /\n/g' >> $@
+	sed -n '5p' $< | sed 's/ /\n/g' >> $@
+
+%.MaxID.win: %.txt makefile
+	grep -oE '[0-9]+' $< | tail -1 > $@; \
+	sed -n '7 s/\r$$//p' $< | sed 's/ /\n/g' >> $@; \
+	mv $@ $(basename $@)
 
 .PHONY: clean
 

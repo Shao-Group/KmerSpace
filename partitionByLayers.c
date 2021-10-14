@@ -268,12 +268,14 @@ int main(int argc, char* argv[]){
     free(visited);
 
     char* output_filename = malloc(sizeof *output_filename *30);
-    sprintf(output_filename, "h%d-%d-%d.hash", k, p, q);
+    sprintf(output_filename, "h%d-%d-%d-%.*s.hash", k, p, q, 4, centers_file);
     FILE* fout = fopen(output_filename, "w");
 
     for(i=0; i<NUM_KMERS; i+=1){
 	//printf("%.*s %d\n", k, decode(i, k, output_filename), h[i]);
-	fprintf(fout, "%.*s %d\n", k, decode(i, k, output_filename), h[i]);
+	if(h[i] > -3){
+	    fprintf(fout, "%.*s %d\n", k, decode(i, k, output_filename), h[i]);
+	}
 	//fprintf(fout, "%lu\t%d\n", i, h[i]);
     }
 

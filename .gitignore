@@ -5,3 +5,4 @@
 *.hash
 test.c
 *.txt
+*.log
