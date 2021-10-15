@@ -9,22 +9,16 @@ ALLDEP:= util.o ArrayList.o #AVLTree.o
 test: $(ALLDEP) test.out partitionByLayers.out
 
 product: CFLAGS = -O3
-product: $(ALLDEP) partitionByLayers.out
+product: $(ALLDEP) partitionByLayers.out partitionByLayersCheckByCenters.out
 
 %.out: %.c $(ALLDEP)
 	$(CC) $(CFLAGS) -o $@ $^ $(LIBS)
 %.o: %.c makefile
 	$(CC) $(CFLAGS) -MMD -c $< -o $@
 
-%.MaxID: %.txt makefile
-	grep -oE '[0-9]+' $< | tail -1 > $@; \
-	#sed -n '7 s/\r$$//p' $< | sed 's/ /\n/g' >> $@
-	sed -n '5p' $< | sed 's/ /\n/g' >> $@
-
-%.MaxID.win: %.txt makefile
-	grep -oE '[0-9]+' $< | tail -1 > $@; \
-	sed -n '7 s/\r$$//p' $< | sed 's/ /\n/g' >> $@; \
-	mv $@ $(basename $@)
+%.MaxID: %.txt
+	grep -oE '[0-9]+' $^ | tail -1 > $@; \
+	sed -n '7 s/\r$$//p' $^ | sed 's/ /\n/g' >> $@
 
 .PHONY: clean
 
