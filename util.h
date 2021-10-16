@@ -1,7 +1,7 @@
 /*
   Utility functions used by the k-mer partition project.
   By: Ke@PSU
-  Last edited: 10/11/2021
+  Last edited: 10/16/2021
 */
 
 #ifndef _UTIL_H
@@ -12,15 +12,19 @@
 
 /*
   Leran@PSU provides the centers of the partitions. 
-  Following her, each k-mer is represented by an long unsigned int 
+  Following her, each k-mer is represented by a long unsigned int 
   with the encoding A-00, C-01, G-10, T-11.
 */
 typedef long unsigned kmer;
 
 /*
-  Calculate Levenshtein distance between two k-mers using Wagner-Fischer algorithm.
+  Calculate Levenshtein distance between two x-mers using Wagner-Fischer algorithm.
   If max_d is nonnegative, the calculation may stop earlier if a diagonal entry
   reaches max_d.
+*/
+int editDist2(const kmer s1, const int k1, const kmer s2, const int k2, const int max_d);
+/*
+  Special case where |s1| = |s2|, kept for backwards compatibility
 */
 int editDist(const kmer s1, const kmer s2, const int k, const int max_d);
 
@@ -44,9 +48,5 @@ char* decode(const kmer enc, const int k, char* str);
 */
 kmer* readCentersFromFile(const char* filename, const int k, size_t* numOfCenters);
 
-/*
-  Generate all neighbors of distance 1 from the given k-mer.
- */
-void getNeighbors(const kmer enc, const int k);
 
 #endif // util.h

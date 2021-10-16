@@ -1,4 +1,9 @@
 /*
+  ******************************************************************
+  Different from the second version (partitionByLayersCheckByCenters.c),
+  here we also include (k+1)-mers and (k-1)-mers that are found
+  during BFS into the hashing function.
+  ******************************************************************
   Given a list of centers c_1, c_2, ..., c_m in the k-mer space S, 
   we partition S into islands A_1, A_2, ..., A_m, and a (connected)
   gray area. This gives a (partial) hashing function that maps
@@ -72,6 +77,8 @@ typedef int bool;
 
 //mask for (k-1)-mers
 #define luMSB 0x8000000000000000lu
+//mask for (k+1)-mers
+#define luSMSB 0x4000000000000000lu
 
 typedef struct{
     kmer center;
@@ -118,13 +125,14 @@ int cmpKmerByDist(const void* s1, const void* s2, void* s3){
 
 /*
   Given the current bfs layer, for each k-mer, perform one
-  substitution or one deletion; for each (k-1)-mer, perform
-  one insertion; check all results against the h (for k-mers)
-  and visited (for (k-1)-mers) arrays. If not visited 
-  (h==-3 or visited==TRUE), add to new_layer and update
-  h and visited.
+  substitution, one deletion, or one insertion; for each (k-1)-mer, 
+  perform one insertion; do nothing for (k+1)-mers.
+  Check all results against the h (for k-mers) 
+  h_m1 (for (k-1)-mers) and h_p1 (for (k+1)-mers) arrays. 
+  If not visited (h{, _m1, _p1}==-3), add to new_layer 
+  and update h{, _m1, _p1}.
  */
-void getNextLayer(Island* id, const int k, int* h, bool* visited){
+void getNextLayer(Island* id, const int k, int* h, int* h_m1, int* h_p1){
     if(id->bfs_layer->used == 0) return;
 
     ArrayList* new_layer = malloc(sizeof *new_layer);
@@ -134,18 +142,51 @@ void getNextLayer(Island* id, const int k, int* h, bool* visited){
     kmer s, head, body, tail, x, m;
     for(i=0; i<id->bfs_layer->used; i+=1){
 	s = id->bfs_layer->arr[i];
+	//(k-1)-mer, no need to ^luMSB as the head will shift MSB out
+	if(s>=luMSB){
+	    //insertion
+	    for(j=0; j<k; j+=1){
+		head = (s>>(j<<1))<<((j+1)<<1);
+		tail = ((1lu<<(j<<1))-1) & s;
+		for(m=0; m<4; m+=1){
+		    body = m<<(j<<1);
+		    x = head|body|tail;
+		    //skip if visited
+		    if(h[x] != -3) continue;
+		    else{
+			AListInsert(new_layer, x);
+			h[x] = -2;
+		    }
+		}
+	    }
+	}
 	//k-mer
-	if(s<luMSB){
+	else if(s<luSMSB){
+	    //insertion
+	    for(j=0; j<=k; j+=1){
+		head = (s>>(j<<1))<<((j+1)<<1);
+		tail = ((1lu<<(j<<1))-1) & s;
+		for(m=0; m<4; m+=1){
+		    body = m<<(j<<1);
+		    x = head|body|tail;
+		    //skip if visited
+		    if(h_p1[x] != -3) continue;
+		    else{
+			AListInsert(new_layer, x|luSMSB);
+			h_p1[x] = -2;
+		    }
+		}
+	    }
 	    //deletion
 	    for(j=0; j<k; j+=1){
 		head = (s>>((j+1)<<1))<<(j<<1);
 		tail = ((1lu<<(j<<1))-1) & s;
 		x = head|tail;
 		//skip if visited
-		if(visited[x]) continue;
+		if(h_m1[x] != -3) continue;
 		else{
 		    AListInsert(new_layer, x|luMSB);
-		    visited[x] = TRUE;
+		    h_m1[x] = -2;
 		}
 	    }
 	    //substitution
@@ -164,25 +205,7 @@ void getNextLayer(Island* id, const int k, int* h, bool* visited){
 		}
 	    }
 	}
-	//(k-1)-mer, no need to ^luMSB as the head will shift MSB out
-	else{
-	    //insertion
-	    for(j=0; j<k; j+=1){
-		head = (s>>(j<<1))<<((j+1)<<1);
-		tail = ((1lu<<(j<<1))-1) & s;
-		for(m=0; m<4; m+=1){
-		    body = m<<(j<<1);
-		    x = head|body|tail;
-		    //skip if visited
-		    if(h[x] != -3) continue;
-		    else{
-			AListInsert(new_layer, x);
-			h[x] = -2;
-		    }
-		}
-	    }
-	}
-    }
+    }//end of for each in layer
     
     AListFree(id->bfs_layer);
     free(id->bfs_layer);
@@ -191,7 +214,7 @@ void getNextLayer(Island* id, const int k, int* h, bool* visited){
 
 int main(int argc, char* argv[]){
     if(argc != 5){
-	printf("usage: partitionByLayersCheckByCenters.out k p q centers_file\n");
+	printf("usage: partitionByLayersCheckByCentersWithP1M1.out k p q centers_file\n");
 	return 1;
     }
 
@@ -209,7 +232,16 @@ int main(int argc, char* argv[]){
     }
 
     size_t NUM_KM1MERS = NUM_KMERS >> 2;
-    bool* visited = calloc(NUM_KM1MERS, sizeof *visited);
+    int* h_m1 = malloc(sizeof *h_m1 *NUM_KM1MERS);
+    for(i=0; i<NUM_KM1MERS; i+=1){
+	h_m1[i] = -3;
+    }
+
+    size_t NUM_KP1MERS = NUM_KMERS << 2;
+    int* h_p1 = malloc(sizeof *h_p1 *NUM_KP1MERS);
+    for(i=0; i<NUM_KP1MERS; i+=1){
+	h_p1[i] = -3;
+    }
 
     size_t NUM_CENTERS;
     kmer* centers = readCentersFromFile(centers_file, k, &NUM_CENTERS);
@@ -247,7 +279,7 @@ int main(int argc, char* argv[]){
     }
     free(centers);
 
-    int radius;
+    int radius, k2;
     Island *cur_center, neighbor;
     kmer s;
     bool conflict;
@@ -257,27 +289,50 @@ int main(int argc, char* argv[]){
 	for(i=0; i<NUM_CENTERS; i+=1){
 	    cur_center = &islands[i];
 	    //generate all k-mers radius away from ci
-	    getNextLayer(cur_center, k, h, visited);
+	    getNextLayer(cur_center, k, h, h_m1, h_p1);
 	    kmer* layer = cur_center->bfs_layer->arr;
 	    
 	    for(j=0; j<cur_center->bfs_layer->used; j+=1){
 		s = layer[j];
-		//skip if s is a (k-1)-mer or s has been assigned
-		if(s >= luMSB || h[s] > -2) continue;
+		//skip if s has been assigned
+		if(s >= luMSB){
+		    k2 = k-1;
+		    s ^= luMSB;
+		    if(h_m1[s] > -2) continue;
+		}else if(s >= luSMSB){
+		    k2 = k+1;
+		    s ^= luSMSB;
+		    if(h_p1[s] > -2) continue;
+		}else{
+		    k2 = k;
+		    if(h[s] > -2) continue;
+		}
+		
 		conflict = FALSE;
 		//for each neighbor of ci
 		for(m=0; m<cur_center->neighbor_indices->used; m+=1){
 		    neighbor = islands[cur_center->neighbor_indices->arr[m]];
-		    dist = editDist(s, neighbor.center, k, -1);
-		    //if dist<r, s would have been examined by neighbor before
-		    if(dist - radius < p){
-			h[s] = -1;
+		    dist = editDist2(s, k2, neighbor.center, k, p+radius);
+		    if(dist < p + radius){
+			if(k2 < k){
+			    h_m1[s] = -1;
+			}else if(k2 > k){
+			    h_p1[s] = -1;
+			}else{
+			    h[s] = -1;
+			}
 			conflict = TRUE;
 			break;
 		    }
 		}
 		if(!conflict){
-		    h[s] = i;
+		    if(k2 < k){
+			h_m1[s] = i;
+		    }else if(k2 > k){
+			h_p1[s] = i;
+		    }else{
+			h[s] = i;
+		    }
 		}
 	    }
 	}
@@ -287,12 +342,12 @@ int main(int argc, char* argv[]){
 	IslandFree(&islands[i]);
     }
     free(islands);
-    free(visited);
 
     char output_filename[50];
-    sprintf(output_filename, "h%d-%d-%d-%.*s.hash-v2", k, p, q, 4, centers_file);
+    sprintf(output_filename, "h%d-%d-%d-%.*s.hash-v3", k, p, q, 4, centers_file);
     FILE* fout = fopen(output_filename, "w");
 
+    fprintf(fout, "k-mers\n");
     for(i=0; i<NUM_KMERS; i+=1){
 	//printf("%.*s %d\n", k, decode(i, k, output_filename), h[i]);
 	if(h[i] > -3){
@@ -300,8 +355,24 @@ int main(int argc, char* argv[]){
 	}
 	//fprintf(fout, "%lu\t%d\n", i, h[i]);
     }
+    free(h);
+
+    fprintf(fout, "(k-1)-mers\n");
+    for(i=0; i<NUM_KM1MERS; i+=1){
+	if(h_m1[i] > -3){
+	    fprintf(fout, "%.*s %d\n", k-1, decode(i, k-1, output_filename), h_m1[i]);
+	}
+    }
+    free(h_m1);
+
+    fprintf(fout, "(k+1)-mers\n");
+    for(i=0; i<NUM_KP1MERS; i+=1){
+	if(h_p1[i] > -3){
+	    fprintf(fout, "%.*s %d\n", k+1, decode(i, k+1, output_filename), h_p1[i]);
+	}
+    }
+    free(h_p1);
 
     fclose(fout);
-    free(h);
     return 0;
 }

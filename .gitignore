@@ -2,9 +2,7 @@
 *.out
 *.d
 *.MaxID
-*.hash
 test.c
 *.txt
-*.log
-*.log-v2
-*.hash-v2
+*.log*
+*.hash*

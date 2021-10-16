@@ -8,46 +8,47 @@ void printIntArray(const int* x, const int len){
   printf("\n");
 }
 
-int editDist(const kmer s1, const kmer s2, const int k, const int max_d){
-    int* row1 = malloc(sizeof *row1 *(k+1));
-    int* row2 = malloc(sizeof *row2 *(k+1));
-    int* tmptr;
-    int i, j, tmp;
-    for(i=0; i<k+1; i+=1){
-	row1[i] = i;
+int editDist(const kmer s1, const kmer s2, const int k, const int max_id){
+    return editDist2(s1, k, s2, k, max_id);
+}
+
+int editDist2(const kmer s1, const int k1, const kmer s2, const int k2, const int max_d){
+    if(k1 > k2) return editDist2(s2, k2, s1, k1, max_d);
+    int diag_index = k2 - k1;
+    if(max_d >= 0 && diag_index >= max_d) return diag_index;
+    
+    int row[k2+1];
+    int i, j, diag, cur,tmp;
+    for(i=0; i<k2+1; i+=1){
+	row[i] = i;
     }
 
     kmer s1_copy, s2_copy;
-    for(i=1, s1_copy=s1; i<k+1; i+=1, s1_copy>>=2){
-	row2[0] = i;
+    for(i=1, s1_copy=s1; i<k1+1; i+=1, s1_copy>>=2){
+	diag_index += 1;
+	diag = row[0];
+	row[0] = i;
 	
-	for(j=1, s2_copy=s2; j<k+1; j+=1, s2_copy>>=2){
+	for(j=1, s2_copy=s2; j<k2+1; j+=1, s2_copy>>=2){
 	    //substitution
-	    row2[j] = row1[j-1] +
-		((s1_copy & 3) == (s2_copy & 3) ? 0 : 1);
+	    cur = diag + ((s1_copy & 3) == (s2_copy & 3) ? 0 : 1);
 	    //deletion
-	    tmp = row1[j] + 1;
-	    row2[j] = row2[j] > tmp ? tmp : row2[j];
+	    tmp = row[j] + 1;
+	    cur = cur > tmp ? tmp : cur;
 	    //insertion
-	    tmp = row2[j-1] +1;
-	    row2[j] = row2[j] > tmp ? tmp : row2[j];	
+	    tmp = row[j-1] +1;
+	    cur = cur > tmp ? tmp : cur;
+	    
+	    diag = row[j];
+	    row[j] = cur;
 	}
 
-	if(max_d >= 0 && row2[i] >= max_d){
-	    tmp = row2[i];
-	    free(row1);
-	    free(row2);
-	    return tmp;
+	if(max_d >= 0 && row[diag_index] >= max_d){
+	    break;
 	}
-	tmptr = row1;
-	row1 = row2;
-	row2 = tmptr;
     }
 
-    tmp = row1[k];
-    free(row1);
-    free(row2);
-    return tmp;
+    return row[diag_index];
 }
 
 kmer encode(const char* str, const int k){
@@ -86,15 +87,13 @@ kmer* readCentersFromFile(const char* filename, const int k, size_t* numOfCenter
   kmer* centers = malloc(sizeof *centers *(*numOfCenters));
 
   int buffersize = k+2;//for \n and \0
-  char* kmer_str = malloc(sizeof *kmer_str *buffersize);
+  char kmer_str[buffersize];
 
   int i;
   for(i=0; i<*numOfCenters; i+=1){
       fgets(kmer_str, buffersize, fin);
       centers[i] = encode(kmer_str, k);
   }
-
-  free(kmer_str);
   
   fclose(fin);
   return centers;

@@ -267,7 +267,7 @@ int main(int argc, char* argv[]){
     free(islands);
     free(visited);
 
-    char* output_filename = malloc(sizeof *output_filename *30);
+    char output_filename[50];
     sprintf(output_filename, "h%d-%d-%d-%.*s.hash", k, p, q, 4, centers_file);
     FILE* fout = fopen(output_filename, "w");
 
@@ -279,7 +279,6 @@ int main(int argc, char* argv[]){
 	//fprintf(fout, "%lu\t%d\n", i, h[i]);
     }
 
-    free(output_filename);
     fclose(fout);
     free(h);
     return 0;
