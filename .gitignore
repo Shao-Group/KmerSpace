@@ -1,0 +1,8 @@
+*.o
+*.out
+*.d
+*.MaxID
+test.c
+*.txt
+*.log*
+*.hash*
