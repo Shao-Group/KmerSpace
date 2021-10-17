@@ -10,13 +10,13 @@
  * The input for this problem are two integers k and d; the output is an independent set
  * of G constructed above.
  *
- * We can try a greedy algorithm. We first generate K. We then iteratively pick a kmer x
- * from K, and remove x and all other kmers whose edit distance with x is at most d; we
- * repeat this procedure until K becomes empty. In order to save time, we do not do
- * simple pairwise comparison to find the edit distance. Instead, we build a graph
- * containing all possible k-mers, (k-1)-mers, and (k+1)-mers as vertices. If the edit
- * distance between any two vertices is 1, we add an edge of length 1 between the two
- * vertices. Then, we add the picked vertex to the MIS, explore all vertices at a
+ * We can try a greedy algorithm. We first generate K. We then iteratively and randomly
+ * pick a kmer x from K, and remove x and all other kmers whose edit distance with x is
+ * at most d; we repeat this procedure until K becomes empty. In order to save time, we
+ * do not do simple pairwise comparison to find the edit distance. Instead, we build a
+ * graph containing all possible k-mers, (k-1)-mers, and (k+1)-mers as vertices. If the
+ * edit distance between any two vertices is 1, we add an edge of length 1 between the
+ * two vertices. Then, we add the picked vertex to the MIS, explore all vertices at a
  * distance less than or equal to d from it using BFS, and remove them from K. We would
  * not do redundant exploration if we detected that a vertex was already explored via a
  * shorter path from another vertex in the MIS.
