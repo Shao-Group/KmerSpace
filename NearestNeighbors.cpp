@@ -35,14 +35,16 @@
 using namespace std;
 
 /*
- * A data structure to store the coveage information for kmers
+ * A data structure to store the coveage information for kmers. The array is chopped into
+ * subarrays to avoid failures of dynamic allocation.
  */
 class CoverageArray
 {
 private:
-    char *aptr;             // Pointer to first half of the array
-    char *aptr2;            // Pointer to second half of the array
-    unsigned long int size; // The capacity of the array
+    char **aptrs;               // An array of pointers to subarrays
+    unsigned long int size;     // The capacity of the whole array in elements
+    unsigned long int num_subs; // Number of subarrays
+    unsigned long int sub_size; // Size of a subarray in bytes
 
 public:
     /*
@@ -52,8 +54,18 @@ public:
      */
     CoverageArray( unsigned long int s )
     {
-        aptr = (char *) calloc(s * 5 / 2, sizeof(char));
-        aptr2 = (char *) calloc(s * 5 / 2, sizeof(char));
+        sub_size = 1;
+        sub_size = sub_size << 30;
+        num_subs = s * 5 / sub_size; // Each element occupies 5 bytes.
+        if ( (s * 5) % sub_size != 0 )
+        {
+            num_subs++;
+        }
+        aptrs = (char **) calloc( num_subs, sizeof(char *) );
+        for (int i = 0; i < num_subs; ++i)
+        {
+            aptrs[i] = (char *) calloc( sub_size, 1 );
+        }
         size = s;
     }
 
@@ -65,17 +77,11 @@ public:
     unsigned long int operator[]( const unsigned long int &sub )
     {
         // Find the byte position where the required element is located
+        // Use modulo to avoid index out of range
         unsigned long int bytePos = (sub % size) * 5;
 
         unsigned long int cov = 0;
-        if ( bytePos < size * 5 / 2 )
-        {
-            memcpy( &cov, &aptr[bytePos], 5 );
-        }
-        else
-        {
-            memcpy( &cov, &aptr2[bytePos - size*5/2], 5 );
-        }
+        memcpy( &cov, &aptrs[bytePos/sub_size][bytePos%sub_size], 5);
         return cov;
     }
     
@@ -87,16 +93,8 @@ public:
      */
     void setCov( const unsigned long int sub, unsigned long int cov )
     {
-        // Find the byte position where the required element is located
         unsigned long int bytePos = (sub % size) * 5;
-        if ( bytePos < size * 5 / 2 )
-        {
-            memcpy( &aptr[bytePos], &cov, 5 );
-        }
-        else
-        {
-            memcpy( &aptr2[bytePos - size*5/2], &cov, 5 );
-        }
+        memcpy( &aptrs[bytePos/sub_size][bytePos%sub_size], &cov, 5);
     }
 };
 
