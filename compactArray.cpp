@@ -7,7 +7,7 @@
  * edge to E iff the edit distance between x and y is at most d. We want to calculate the
  * an maximal independent set (MIS) of G that covers all vertices.
  *
- * The input for this problem is two integers k and d; the output is an independent set
+ * The input for this problem are two integers k and d; the output is an independent set
  * of G constructed above.
  *
  * We can try a greedy algorithm. We first generate K. We then iteratively pick a kmer x
@@ -47,15 +47,17 @@
 using namespace std;
 
 /*
- * A class for the dist array used in BFS
+ * A class for the dist array used in BFS. The array is chopped into
+ * subarrays to avoid failures of dynamic allocation.
  */
 class DistArray
 {
 private:
-    char *aptr1;            // Pointer to the first half of the array
-    char *aptr2;            // Pointer to the second half of the array
-    unsigned long int size; // Size of the array in bytes
-    unsigned int max_d;     // Maximum edit distance allowed
+    char **aptrs;               // An array of pointers to subarrays
+    unsigned long int size;     // The capacity of the whole array in elements
+    unsigned long int num_subs; // Number of subarrays
+    unsigned long int sub_size; // Size of a subarray in bytes
+    unsigned int max_d;         // Maximum edit distance allowed
 
 public:
     /*
@@ -65,9 +67,19 @@ public:
      */
     DistArray( unsigned long int s, unsigned int d )
     {
-        size = s / 4;
-        aptr1 = (char *) calloc(size / 2, sizeof(char));
-        aptr2 = (char *) calloc(size / 2, sizeof(char));
+        sub_size = 1;
+        sub_size = sub_size << 30;
+        num_subs = s / 4 / sub_size; // Each element occupies 1/4 bytes.
+        if ( (s / 4) % sub_size != 0 )
+        {
+            num_subs++;
+        }
+        aptrs = (char **) calloc( num_subs, sizeof(char *) );
+        for (int i = 0; i < num_subs; ++i)
+        {
+            aptrs[i] = (char *) calloc( sub_size, 1 );
+        }
+        size = s;
         max_d = d;
     }
 
@@ -76,8 +88,11 @@ public:
      */
     ~DistArray()
     {
-        free( aptr1 );
-        free( aptr2 );        
+        for (int i = 0; i < num_subs; ++i)
+        {
+            free( aptrs[i] );
+        }
+        free( aptrs );
     }
 
     /*
@@ -88,22 +103,15 @@ public:
     unsigned int operator[]( const unsigned long int &sub )
     {
         // Find the bit offset
-        int offset = sub % 4;
+        int offset = (sub % 4) * 2;
 
         // Find the byte in which the required element is located
         unsigned long int bytePos = sub / 4;
 
         unsigned int dist;
-        if ( bytePos < size / 2 )
-        {
-            memcpy( &dist, &aptr1[bytePos], 1 );
-        }
-        else
-        {
-            memcpy( &dist, &aptr2[bytePos - size/2], 1 );
-        }
+        memcpy( &dist, &aptrs[bytePos/sub_size][bytePos%sub_size], 1 );
 
-        dist = (dist << (24 + 2 * offset)) >> 30;
+        dist = (dist << (24 + offset)) >> 30;
         return dist + (max_d + 1)/2 - 1;
     }
     
@@ -125,37 +133,19 @@ public:
         unsigned long int bytePos = sub / 4;
 
         // Find the bit offset
-        int offset = sub % 4;
+        int offset = (sub % 4) * 2;
 
-        if ( bytePos < size/2 )
-        {
-            unsigned int tempByte;
-            memcpy( &tempByte, &aptr1[bytePos], 1 );
-            unsigned int head = tempByte >> ((4 - offset) * 2);
-            head = head << ((4 - offset) * 2);
-            unsigned int tail = tempByte << 24 << ((offset + 1) * 2);
-            tail = tail >> 24 >> ((offset + 1) * 2);
-            tempByte = tempByte & (head | tail);
-            unsigned int body = dist;
-            body = body << ((3 - offset) * 2);
-            tempByte = tempByte | body;
-            memcpy( &aptr1[bytePos], &tempByte, 1 );
-        }
-        else
-        {
-            bytePos -= size/2;
-            unsigned int tempByte;
-            memcpy( &tempByte, &aptr2[bytePos], 1 );
-            unsigned int head = tempByte >> ((4 - offset) * 2);
-            head = head << ((4 - offset) * 2);
-            unsigned int tail = tempByte << 24 << ((offset + 1) * 2);
-            tail = tail >> 24 >> ((offset + 1) * 2);
-            tempByte = tempByte & (head | tail);
-            unsigned int body = dist;
-            body = body << ((3 - offset) * 2);
-            tempByte = tempByte | body;
-            memcpy( &aptr2[bytePos], &tempByte, 1 );
-        }
+        unsigned int tempByte;
+        memcpy( &tempByte, &aptrs[bytePos/sub_size][bytePos%sub_size], 1 );
+        unsigned int head = tempByte >> (8 - offset);
+        head = head << (8 - offset);
+        unsigned int tail = tempByte << 24 << (offset + 2);
+        tail = tail >> 24 >> (offset + 2);
+        tempByte = tempByte & (head | tail);
+        unsigned int body = dist;
+        body = body << (6 - offset);
+        tempByte = tempByte | body;
+        memcpy( &aptrs[bytePos/sub_size][bytePos%sub_size], &tempByte, 1 );
     }
 };
 

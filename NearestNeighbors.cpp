@@ -70,6 +70,18 @@ public:
     }
 
     /*
+     * Destructor
+     */
+    ~CoverageArray()
+    {
+        for (int i = 0; i < num_subs; ++i)
+        {
+            free( aptrs[i] );
+        }
+        free( aptrs );
+    }
+
+    /*
      * Overload [] operator to return the coverage of the kmer indexed by sub
      *
      * sub: The index of the element to be extract
