@@ -40,6 +40,15 @@ void AListTrim(ArrayList* list);
   If already full, the size of the array will be doubled before the insertion.
 */
 void AListInsert(ArrayList* list, long unsigned enc);
-  
+
+/*
+  Clear used count so the array can be used as if a new one.
+*/
+void AListClear(ArrayList* list);
+
+/*
+  Swap two lists.
+*/
+void AListSwap(ArrayList* la, ArrayList* lb);
 
 #endif // ArrayList.h

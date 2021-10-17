@@ -32,3 +32,21 @@ void AListInsert(ArrayList* list, long unsigned enc){
     }
     list->arr[list->used++] = enc;
 }
+
+void AListClear(ArrayList* list){
+    list->used = 0;
+}
+
+void AListSwap(ArrayList* la, ArrayList* lb){
+    size_t tmp = la->size;
+    la->size = lb->size;
+    lb->size = tmp;
+
+    tmp = la->used;
+    la->used = lb->used;
+    lb->used = tmp;
+
+    long unsigned* arr_ptr = la->arr;
+    la->arr = lb->arr;
+    lb->arr = arr_ptr;
+}
