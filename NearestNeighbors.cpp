@@ -7,7 +7,7 @@
  * edge to E iff the edit distance between x and y is at most d. We want to calculate the
  * an maximal independent set of G that covers all vertices.
  *
- * The input for this problem is two integers k and d; the output is an independent set
+ * The input for this problem are two integers k and d; the output is an independent set
  * of G constructed above.
  *
  * We use a simple greedy algorithm. We first generate K. We then iteratively pick a kmer
