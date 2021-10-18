@@ -528,7 +528,7 @@ void doPairwiseCmp( const int k, const int d )
             isCovered = false;
             continue;
         }
-        printKmer( i, k );
+        printKmer( i << 2, k );
         cerr << ' ';
         MIS.push_back( i );
     }
