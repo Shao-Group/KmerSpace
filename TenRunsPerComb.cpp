@@ -48,6 +48,9 @@
 #include <ios>
 #include <fstream>
 #include <string>
+#include <algorithm>
+#include <random>
+#include <chrono>
 
 using namespace std;
 
@@ -495,27 +498,22 @@ void doPairwiseCmp( const int k, const int d )
     kmerSpaceSize = kmerSpaceSize << (2 * k);
 
     // Generate the k-mer space
-    unordered_set<unsigned long int> kmerSpace;
+    vector<unsigned long int> kmerSpace;
     for (unsigned long int i = 0; i < kmerSpaceSize; ++i)
     {
-        kmerSpace.emplace( i );
+        kmerSpace.push_back( i );
     }
+    unsigned seed = chrono::system_clock::now().time_since_epoch().count();
+    shuffle( kmerSpace.begin(), kmerSpace.end(), default_random_engine(seed) );
 
-    srand( time(nullptr) );
     vector<unsigned long int> MIS;
     bool isCovered = false;
 
     cerr << "\nList of independent nodes: " << endl;
     while ( !kmerSpace.empty() )
     {
-        unsigned long int picked = rand() % kmerSpace.size();
-        auto temp = kmerSpace.begin();
-        for (unsigned long int j = 0; j < picked; ++j)
-        {
-            temp++;
-        }
-        unsigned long int i = *temp;
-        kmerSpace.erase(temp);
+        unsigned long int i = *kmerSpace.begin();
+        kmerSpace.erase(kmerSpace.begin());
 
         for ( const unsigned long int &j : MIS )
         {
