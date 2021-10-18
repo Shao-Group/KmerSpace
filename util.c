@@ -98,3 +98,17 @@ kmer* readCentersFromFile(const char* filename, const int k, size_t* numOfCenter
   fclose(fin);
   return centers;
 }
+
+void readKMerHashFromFile(const char* filename, const int k, int* h){
+    FILE* fin = fopen(filename, "r");
+
+    char format[20];
+    sprintf(format, "%%%ds %%d\n", k);
+    char kmer_str[k+1]; //for \0
+    int kmer_hash;
+    while(fscanf(fin, format, kmer_str, &kmer_hash) != EOF){
+	h[encode(kmer_str, k)] = kmer_hash;
+    }
+
+    fclose(fin);
+}

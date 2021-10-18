@@ -1,8 +1,10 @@
 /*
   ******************************************************************
-  Different from the second version (partitionByLayersCheckByCenters.c),
-  here we also include (k+1)-mers and (k-1)-mers that are found
-  during BFS into the hashing function.
+  This is an auxiliary version for v1: partitionByLayers.c and
+  v5: partitionByLayersCheckByNeighbors.c.
+  Output of these two v1/v5 can be fed into this version, 
+  then additional (k-1)- and (k+1)-mers may be assigned. 
+  Different from v3/v4, this can prioritize k-mers.
   ******************************************************************
   Given a list of centers c_1, c_2, ..., c_m in the k-mer space S, 
   we partition S into islands A_1, A_2, ..., A_m, and a (connected)
@@ -58,7 +60,7 @@
   h(s) = -3 untouched
  
   By: Ke@PSU
-  Last edited: 10/16/2021
+  Last edited: 10/18/2021
 */
 
 #include "util.h"
@@ -79,7 +81,7 @@ typedef struct{
     kmer center;
     //(k-1)-mers has their msb set to 1
     //(k+1)-mers has their second msb set to 1
-    ArrayList* bfs_layer; //all the k-, (k-1)-, and (k+1)-mers to be examined by next step of bfs
+    ArrayList* bfs_layer; //all the k-, (k-1), and (k+1)-mers to be examined by next step of bfs
 } Island;
 
 void IslandInit(Island* id, const kmer c){
@@ -103,12 +105,16 @@ void IslandFree(Island* id){
   h_m1 (for (k-1)-mers) and h_p1 (for (k+1)-mers) arrays. 
   If not visited (h{, _m1, _p1}==-3), add to new_layer 
   and update h{, _m1, _p1}.
+  ******************************************************************
+  Because k-mers are already assigned, they are always added so no
+  (k+1)- and (k-1)-mers (that would be explored by v3/v4) will be missed
+  ******************************************************************
  */
 void getNextLayer(Island* id, const int k, int* h, int* h_m1, int* h_p1){
     if(id->bfs_layer->used == 0) return;
 
-    ArrayList* new_layer = malloc(sizeof *new_layer);
-    AListInit(new_layer);
+    HashTable new_layer;
+    HTableInit(&new_layer);
     
     size_t i, j;
     kmer s, head, body, tail, x, m;
@@ -123,12 +129,8 @@ void getNextLayer(Island* id, const int k, int* h, int* h_m1, int* h_p1){
 		for(m=0; m<4; m+=1){
 		    body = m<<(j<<1);
 		    x = head|body|tail;
-		    //skip if visited
-		    if(h[x] != -3) continue;
-		    else{
-			AListInsert(new_layer, x);
-			h[x] = -2;
-		    }
+		    //always add k-mer
+		    HTableInsert(&new_layer, x);
 		}
 	    }
 	}
@@ -144,7 +146,7 @@ void getNextLayer(Island* id, const int k, int* h, int* h_m1, int* h_p1){
 		    //skip if visited
 		    if(h_p1[x] != -3) continue;
 		    else{
-			AListInsert(new_layer, x|luSMSB);
+			HTableInsert(&new_layer, x|luSMSB);
 			h_p1[x] = -2;
 		    }
 		}
@@ -157,7 +159,7 @@ void getNextLayer(Island* id, const int k, int* h, int* h_m1, int* h_p1){
 		//skip if visited
 		if(h_m1[x] != -3) continue;
 		else{
-		    AListInsert(new_layer, x|luMSB);
+		    HTableInsert(&new_layer, x|luMSB);
 		    h_m1[x] = -2;
 		}
 	    }
@@ -168,20 +170,18 @@ void getNextLayer(Island* id, const int k, int* h, int* h_m1, int* h_p1){
 		for(m=0; m<4; m+=1){
 		    body = m<<((j-1)<<1);
 		    x = head|body|tail;
-		    //skip if visited
-		    if(h[x] != -3) continue;
-		    else{
-			AListInsert(new_layer, x);
-			h[x] = -2;
-		    }
+		    //always add k-mer
+		    HTableInsert(&new_layer, x);
 		}
 	    }
 	}
     }//end of for each in layer
+
     
     AListFree(id->bfs_layer);
-    free(id->bfs_layer);
-    id->bfs_layer = new_layer;
+    id->bfs_layer->arr = HTableToArray(&new_layer, NULL);
+    id->bfs_layer->used = id->bfs_layer->size = new_layer.used;
+    HTableFree(&new_layer);
 }
 
 bool cleanAndReturnConflict(bool conflict, HashTable* visited,
@@ -343,8 +343,8 @@ bool conflictWithNeighbors(kmer s, int k, int ks, int depth, size_t c,
 }
 
 int main(int argc, char* argv[]){
-    if(argc != 5){
-	printf("usage: partitionByLayersCheckByNeighborsWithP1M1.out k p q centers_file\n");
+    if(argc != 6){
+	printf("usage: partitionByLayersCheckByNeighborsOnlyP1M1.out k p q centers_file kmer_hash_file\n");
 	return 1;
     }
 
@@ -352,6 +352,7 @@ int main(int argc, char* argv[]){
     int p = atoi(argv[2]);
     int q = atoi(argv[3]);
     char* centers_file = argv[4];
+    char* hash_file = argv[5];
 
     size_t NUM_KMERS = (1<<(k<<1));
     int* h = malloc(sizeof *h *NUM_KMERS);
@@ -360,7 +361,9 @@ int main(int argc, char* argv[]){
     for(i=0; i<NUM_KMERS; i+=1){
 	h[i] = -3;
     }
-
+    readKMerHashFromFile(hash_file, k, h);
+    
+    
     size_t NUM_KM1MERS = NUM_KMERS >> 2;
     int* h_m1 = malloc(sizeof *h_m1 *NUM_KM1MERS);
     for(i=0; i<NUM_KM1MERS; i+=1){
@@ -444,7 +447,7 @@ int main(int argc, char* argv[]){
     free(islands);
 
     char output_filename[50];
-    sprintf(output_filename, "h%d-%d-%d-%.*s.hash-v4", k, p, q, 4, centers_file);
+    sprintf(output_filename, "h%d-%d-%d-%.*s.hash-v5a", k, p, q, 4, centers_file);
     FILE* fout = fopen(output_filename, "w");
 
     fprintf(fout, "k-mers\n");

@@ -19,8 +19,10 @@ void HTableFree(HashTable* table){
 
 //return the next available index (including cur_index),
 //existance of such a position is guaranteed by the load factor
-static inline size_t HTableProbe(HashTable* table, size_t cur_index){
-    while(table->arr[cur_index] != 0){
+//if found value along the way, return that position
+static inline size_t HTableProbe(HashTable* table, size_t cur_index,
+				 long unsigned value){
+    while(table->arr[cur_index] != 0 && table->arr[cur_index] != value){
 	cur_index += 1;
 	if(cur_index >= table->size) cur_index = 0;
     }
@@ -37,11 +39,18 @@ static inline void HTableUnhash(long unsigned value, long unsigned* enc){
 }
 
 //add enc to table without checking load factor and incrementing used
-static inline void HTableAdd(HashTable* table, long unsigned enc){
+//return 1 if added, return 0 if (key, value) is already in table
+static inline int HTableAdd(HashTable* table, long unsigned enc){
     size_t key;
     unsigned long value;
     HTableHash(table->size, enc, &key, &value);
-    table->arr[HTableProbe(table, key)] = value;
+    size_t pos = HTableProbe(table, key, value);
+    if(table->arr[pos] == 0){
+	table->arr[pos] = value;
+	return 1;
+    }else{
+	return 0;
+    }
 }
 
 void HTableResize(HashTable* table, size_t size){
@@ -67,18 +76,31 @@ void HTableInsert(HashTable* table, long unsigned enc){
     if(table->size < (table->used << 1)){
         HTableResize(table, table->size<<1);
     }
-    HTableAdd(table, enc);
-    table->used += 1;
+    if(HTableAdd(table, enc)) table->used += 1;
 }
 
 int HTableSearch(HashTable* table, long unsigned enc){
     size_t key;
     unsigned long value;
     HTableHash(table->size, enc, &key, &value);
-    while(table->arr[key]){
-	if(table->arr[key] == value) return 1;
-	key += 1;
-	if(key >= table->size) key = 0;
+    if(table->arr[HTableProbe(table, key, value)] == 0) return 0;
+    else return 1;
+}
+
+long unsigned* HTableToArray(HashTable* table, long unsigned* list){
+    if(list == NULL){
+	list = malloc(sizeof *list *table->used);
     }
-    return 0;
+
+    int i, j=0;
+    long unsigned cur, enc;
+    for(i=0; i<table->size; i+=1){
+	cur = table->arr[i];
+	if(cur != 0){
+	    HTableUnhash(cur, &enc);
+	    list[j++] = enc;
+	}
+    }
+    
+    return list;
 }

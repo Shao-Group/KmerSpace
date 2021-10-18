@@ -48,4 +48,10 @@ void HTableInsert(HashTable* table, long unsigned enc);
  */
 int HTableSearch(HashTable* table, long unsigned enc);
 
-#endif // ArrayList.h
+/*
+  Dump everything in the table to an ArrayList, if list is NULL, a new
+  list will be allocated.
+*/
+long unsigned* HTableToArray(HashTable* table, long unsigned* list);
+
+#endif // HashTable.h
