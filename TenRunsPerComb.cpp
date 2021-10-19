@@ -54,6 +54,7 @@
 #include <iostream>
 #include <cstdlib>
 #include <cstring>
+#include <ctime>
 #include <unordered_set>
 #include <unordered_map>
 #include <vector>
@@ -62,9 +63,6 @@
 #include <ios>
 #include <fstream>
 #include <string>
-#include <algorithm>
-#include <random>
-#include <chrono>
 
 using namespace std;
 
@@ -74,6 +72,7 @@ private:
     char *K;                // The pointer to the kmer space
     char *head;             // The head pointer
     char *tail;             // The tail pointer
+    unsigned long int size; // The size of the kmer space in elements
 
 public:
     /*
@@ -83,23 +82,15 @@ public:
      */
     KmerSpace( const unsigned long int s )
     {
-        vector<unsigned long int> kmerSpace;
+        K = (char *) malloc( s * 5 );
         for (unsigned long int i = 0; i < s; ++i)
         {
-            kmerSpace.push_back( i );
+            memcpy( K + i * 5, &i, 5 );
         }
-        // Shuffle the space to achieve randomness
-        // unsigned seed = chrono::system_clock::now().time_since_epoch().count();
-        // shuffle( kmerSpace.begin(), kmerSpace.end(), default_random_engine(seed) );
 
-        K = (char *) malloc( s * 5 );
         head = K - 5;
         tail = K + s * 5;
-
-        for (unsigned long int i = 0; i < s; ++i)
-        {
-            memcpy( K + i * 5, &kmerSpace[i], 5 );
-        }
+        size = s;
     }
 
     /*
@@ -121,6 +112,18 @@ public:
     bool empty()
     {
         return (head == tail);
+    }
+
+    void shuffle()
+    {
+        for ( unsigned long int i = size - 1; i >= 1; --i )
+        {
+            unsigned long int j = rand() % (i + 1);
+            unsigned long int temp = 0;
+            memcpy( &temp, K + j*5, 5 );
+            memcpy( K + j*5, K + i*5, 5 );
+            memcpy( K + i*5, &temp, 5 );
+        }
     }
 };
 
@@ -539,11 +542,6 @@ void reportPerformance()
  */
 void doBFS( const int k, const int d )
 {
-    cerr << "Please enter k: ";
-    cerr << k << endl;
-    cerr << "Plesae enter d: ";
-    cerr << d << endl;
-
     // Initialize dist arrays for BFS
     unsigned long int num_kmers = 1;
     num_kmers = num_kmers << (2 * k);
@@ -558,6 +556,7 @@ void doBFS( const int k, const int d )
     DistArray dist_kPlus1mer(num_kPlus1mers, d);
 
     KmerSpace kmerSpace( num_kmers );
+    kmerSpace.shuffle();
 
     unsigned long int num_indep_nodes = 0;
     cerr << "\nList of independent nodes: " << endl;
@@ -683,14 +682,10 @@ void doBFS( const int k, const int d )
  */
 void doPairwiseCmp( const int k, const int d )
 {
-    cerr << "Please enter k: ";
-    cerr << k << endl;
-    cerr << "Plesae enter d: ";
-    cerr << d << endl;
-
     unsigned long int kmerSpaceSize = 1;
     kmerSpaceSize = kmerSpaceSize << (2 * k);
     KmerSpace kmerSpace( kmerSpaceSize );
+    kmerSpace.shuffle();
 
     vector<unsigned long int> MIS;
     bool isCovered = false;
@@ -731,14 +726,10 @@ void doPairwiseCmp( const int k, const int d )
  */
 void doNNC( const int k, const int d )
 {
-    cerr << "Please enter k: ";
-    cerr << k << endl;
-    cerr << "Plesae enter d: ";
-    cerr << d << endl;
-
     unsigned long int kmerSpaceSize = 1;
     kmerSpaceSize = kmerSpaceSize << (2 * k);
     KmerSpace kmerSpace( kmerSpaceSize );
+    kmerSpace.shuffle();
 
     unsigned long int i = kmerSpace.next();
     vector<unsigned long int> MIS;
@@ -783,33 +774,7 @@ void doNNC( const int k, const int d )
 
 int main()
 {
-    int k;
-    int d;
-    cerr << "Please enter k: ";
-    cin >> k;
-    cerr << k << endl;
-    cerr << "Plesae enter d: ";
-    cin >> d;
-    cerr << d << endl;
-
-    if ( d < 5 )
-    {
-        doBFS( k, d );
-    }
-    else if ( d < 8 )
-    {
-        doNNC( k, d );
-    }
-    else
-    {
-        doPairwiseCmp( k, d );
-    }
-    return 0;
-}
-
-int main()
-{
-    int k = 10;
+    int k = 15;
     pid_t parent_id = getpid();
 
     for (int i = 1; i < k; ++i) // Iterate over all possible d's
