@@ -186,7 +186,7 @@ public:
     CoverageArray( unsigned long int s )
     {
         sub_size = 1;
-        sub_size = sub_size << 30;
+        sub_size = sub_size << 20;
         num_subs = s * 5 / sub_size; // Each element occupies 5 bytes.
         if ( (s * 5) % sub_size != 0 )
         {
@@ -704,7 +704,7 @@ int main()
                     doBFS( k, i );
                     return 0;
                 }
-                else if ( i < 9 )
+                else if ( i < 7 )
                 {
                     doNNC( k, i );
                     return 0;
