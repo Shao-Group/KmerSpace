@@ -82,10 +82,10 @@ typedef struct{
 
 void IslandInit(Island* id, const kmer c){
     id->center = c;
-    id->neighbor_indices = malloc(sizeof *(id->neighbor_indices));
+    id->neighbor_indices = malloc_harder(sizeof *(id->neighbor_indices));
     AListInit(id->neighbor_indices);
 
-    id->bfs_layer = malloc(sizeof *(id->bfs_layer));
+    id->bfs_layer = malloc_harder(sizeof *(id->bfs_layer));
     AListInit(id->bfs_layer);
     AListInsert(id->bfs_layer, c);
 }
@@ -127,7 +127,7 @@ int cmpKmerByDist(const void* s1, const void* s2, void* s3){
 void getNextLayer(Island* id, const int k, int* h, bool* visited){
     if(id->bfs_layer->used == 0) return;
 
-    ArrayList* new_layer = malloc(sizeof *new_layer);
+    ArrayList* new_layer = malloc_harder(sizeof *new_layer);
     AListInit(new_layer);
     
     size_t i, j;
@@ -201,7 +201,7 @@ int main(int argc, char* argv[]){
     char* centers_file = argv[4];
 
     size_t NUM_KMERS = (1<<(k<<1));
-    int* h = malloc(sizeof *h *NUM_KMERS);
+    int* h = malloc_harder(sizeof *h *NUM_KMERS);
 
     size_t i, j, m;
     for(i=0; i<NUM_KMERS; i+=1){
@@ -209,11 +209,11 @@ int main(int argc, char* argv[]){
     }
 
     size_t NUM_KM1MERS = NUM_KMERS >> 2;
-    bool* visited = calloc(NUM_KM1MERS, sizeof *visited);
+    bool* visited = calloc_harder(NUM_KM1MERS, sizeof *visited);
 
     size_t NUM_CENTERS;
     kmer* centers = readCentersFromFile(centers_file, k, &NUM_CENTERS);
-    Island* islands = malloc(sizeof *islands *NUM_CENTERS);
+    Island* islands = malloc_harder(sizeof *islands *NUM_CENTERS);
 
     for(i=0; i<NUM_CENTERS; i+=1){
 	h[centers[i]] = i;

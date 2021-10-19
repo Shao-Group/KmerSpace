@@ -5,7 +5,7 @@ void AListInit(ArrayList* list){
 }
 
 void AListInitSize(ArrayList* list, size_t size){
-    list->arr = malloc(sizeof *(list->arr) *size);
+    list->arr = malloc_harder(sizeof *(list->arr) *size);
     list->size = size;
     list->used = 0;
 }
@@ -18,7 +18,7 @@ void AListFree(ArrayList* list){
 }
 
 static inline void AListResize(ArrayList* list, size_t size){
-    list->arr = realloc(list->arr, sizeof *(list->arr) *size);
+    list->arr = realloc_harder(list->arr, sizeof *(list->arr) *size);
     list->size = size;
 }
 
