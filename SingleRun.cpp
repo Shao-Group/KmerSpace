@@ -80,22 +80,22 @@ public:
      */
     KmerSpace( const unsigned long int s )
     {
-        vector<unsigned long int> kmerSpace;
-        for (unsigned long int i = 0; i < s; ++i)
+        vector<unsigned int> kmerSpace;
+        for (unsigned int i = 0; i < s; ++i)
         {
             kmerSpace.push_back( i );
         }
         // Shuffle the space to achieve randomness
-        // unsigned seed = chrono::system_clock::now().time_since_epoch().count();
-        // shuffle( kmerSpace.begin(), kmerSpace.end(), default_random_engine(seed) );
+        unsigned seed = chrono::system_clock::now().time_since_epoch().count();
+        shuffle( kmerSpace.begin(), kmerSpace.end(), default_random_engine(seed) );
 
-        K = (char *) malloc( s * 5 );
+        K = (char *) calloc( s * 5, 1 );
         head = K - 5;
         tail = K + s * 5;
 
         for (unsigned long int i = 0; i < s; ++i)
         {
-            memcpy( K + i * 5, &kmerSpace[i], 5 );
+            memcpy( K + i * 5, &kmerSpace[i], 4 );
         }
     }
 
@@ -536,11 +536,6 @@ void reportPerformance()
  */
 void doBFS( const int k, const int d )
 {
-    cerr << "Please enter k: ";
-    cerr << k << endl;
-    cerr << "Plesae enter d: ";
-    cerr << d << endl;
-
     // Initialize dist arrays for BFS
     unsigned long int num_kmers = 1;
     num_kmers = num_kmers << (2 * k);
@@ -680,11 +675,6 @@ void doBFS( const int k, const int d )
  */
 void doPairwiseCmp( const int k, const int d )
 {
-    cerr << "Please enter k: ";
-    cerr << k << endl;
-    cerr << "Plesae enter d: ";
-    cerr << d << endl;
-
     unsigned long int kmerSpaceSize = 1;
     kmerSpaceSize = kmerSpaceSize << (2 * k);
     KmerSpace kmerSpace( kmerSpaceSize );
@@ -728,11 +718,6 @@ void doPairwiseCmp( const int k, const int d )
  */
 void doNNC( const int k, const int d )
 {
-    cerr << "Please enter k: ";
-    cerr << k << endl;
-    cerr << "Plesae enter d: ";
-    cerr << d << endl;
-
     unsigned long int kmerSpaceSize = 1;
     kmerSpaceSize = kmerSpaceSize << (2 * k);
     KmerSpace kmerSpace( kmerSpaceSize );
