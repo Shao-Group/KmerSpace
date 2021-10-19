@@ -8,7 +8,8 @@
 #ifndef _HASHTABLE_H
 #define _HASHTABLE_H 1
 
-#include <stdlib.h>
+#include "util.h"
+//#include <stdlib.h>
 
 typedef struct {
     long unsigned* arr;

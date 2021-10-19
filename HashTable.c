@@ -5,7 +5,7 @@ void HTableInit(HashTable* table){
 }
 
 void HTableInitSize(HashTable* table, size_t size){
-    table->arr = calloc(size, sizeof *table->arr);
+    table->arr = calloc_harder(size, sizeof *table->arr);
     table->size = size;
     table->used = 0;
 }
@@ -56,7 +56,7 @@ static inline int HTableAdd(HashTable* table, long unsigned enc){
 void HTableResize(HashTable* table, size_t size){
     long unsigned* old_arr = table -> arr;
     size_t old_size = table -> size;
-    table->arr = calloc(size, sizeof *table->arr);
+    table->arr = calloc_harder(size, sizeof *table->arr);
     table->size = size;
 
     size_t i;
@@ -89,7 +89,7 @@ int HTableSearch(HashTable* table, long unsigned enc){
 
 long unsigned* HTableToArray(HashTable* table, long unsigned* list){
     if(list == NULL){
-	list = malloc(sizeof *list *table->used);
+	list = malloc_harder(sizeof *list *table->used);
     }
 
     int i, j=0;
