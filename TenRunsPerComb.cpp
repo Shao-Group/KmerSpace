@@ -9,37 +9,51 @@
  *
  * The input for this problem are two integers k and d; the output is an independent set
  * of G constructed above.
- *
- * We can try a greedy algorithm. We first generate K. We then iteratively and randomly
- * pick a kmer x from K, and remove x and all other kmers whose edit distance with x is
- * at most d; we repeat this procedure until K becomes empty. In order to save time, we
- * do not do simple pairwise comparison to find the edit distance. Instead, we build a
- * graph containing all possible k-mers, (k-1)-mers, and (k+1)-mers as vertices. If the
- * edit distance between any two vertices is 1, we add an edge of length 1 between the
- * two vertices. Then, we add the picked vertex to the MIS, explore all vertices at a
- * distance less than or equal to d from it using BFS, and remove them from K. We would
- * not do redundant exploration if we detected that a vertex was already explored via a
- * shorter path from another vertex in the MIS.
  * --------------------------------------------------------------------------------------
  *
- * In the program, the author uses a binary encoding {00, 01, 10, 11} for the alphabet
+ * This program implements three methods to solve this problem:
+ * 1. BFS variant for small d's
+ *    We first build a graph containing all possible k-mers, (k-1)-mers, and (k+1)-mers
+ *    as vertices. We then examine three types of vertex pairs (kmer, kmer), 
+ *    (kmer, (k+1)-mer), and (kmer, (k-1)-mer). If the edit distance between any of these
+ *    pairs of vertices is 1, we add an edge of length 1 between the two vertices. Then,
+ *    We generate the kmer space K. After that, we iteratively and randomly pick a kmer x
+ *    from K, add it to the MIS, explore all vertices within a distance d from it using
+ *    BFS, update the dist array, and remove all visited kmer from K. In order to save
+ *    time, we would not do redundant exploration if we detected that a vertex was 
+ *    already explored via a shorter path from another vertex in the MIS.
+ *
+ * 2. Simple pairwise comparison for large d's
+ *    We first generate K. We then iteratively pick a kmer x from K, remove x, and check
+ *    if x is covered by any kmer in the current MIS. If not, we add x to the MIS. This
+ *    procedure is repeated until K becomes empty.
+ *
+ * 3. Nearest neighbor consultant for medium d's
+ *    We first generate K. Then, we iteratively pick a kmer x from K, remove x, and check
+ *    if any of x's nearest neighbors is already associated with a node y in the current
+ *    MIS. If so, we then check if the edit distance between x and y is also less than d.
+ *    If it is, we skip x and continue our iteration. Otherwise, we do the same as the
+ *    second approach: we do an exhausted search for a kmer in the current MIS whose edit
+ *    edit distance with x is less than or equal to d. If we find such kmer, we skip x
+ *    and continue our iteration. If we fail to find such kmer, we add x to the MIS.
+ *
+ * Moreover, the author uses a binary encoding {00, 01, 10, 11} for the alphabet
  * {A, C, G, T} in order to save space. Thus, any k-mer that is not longer than 32
  * characters can be represented by a 64-bit binary number stored in an 8-byte slot (an
  * unsigned long int). Besides, the author uses the last 2 bits of the 8-byte slot to
  * represent the length of the k-mer. 00 represents k - 1; 01 represents k; 11 represents
  * k + 1.
  *
- * Particularly, this program runs 10 times for each combination with k=10 for testing and
- * observation purpose.
+ * Particularly, this program runs 10 times for each combination with a given k for
+ * testing and observation purpose.
  *
  * Author: Leran Ma (lkm5463@psu.edu)
- * Date:   5:06 PM, Saturday, October 17, 2021
+ * Date:   5:06 PM, Monday, October 18, 2021
  */
 
 #include <iostream>
 #include <cstdlib>
 #include <cstring>
-#include <ctime>
 #include <unordered_set>
 #include <unordered_map>
 #include <vector>
@@ -54,9 +68,65 @@
 
 using namespace std;
 
+class KmerSpace
+{
+private:
+    char *K;                // The pointer to the kmer space
+    char *head;             // The head pointer
+    char *tail;             // The tail pointer
+
+public:
+    /*
+     * Constructor
+     *
+     * s: the number of kmers in the space
+     */
+    KmerSpace( const unsigned long int s )
+    {
+        vector<unsigned long int> kmerSpace;
+        for (unsigned long int i = 0; i < s; ++i)
+        {
+            kmerSpace.push_back( i );
+        }
+        // Shuffle the space to achieve randomness
+        // unsigned seed = chrono::system_clock::now().time_since_epoch().count();
+        // shuffle( kmerSpace.begin(), kmerSpace.end(), default_random_engine(seed) );
+
+        K = (char *) malloc( s * 5 );
+        head = K - 5;
+        tail = K + s * 5;
+
+        for (unsigned long int i = 0; i < s; ++i)
+        {
+            memcpy( K + i * 5, &kmerSpace[i], 5 );
+        }
+    }
+
+    /*
+     * Destructor
+     */
+    ~KmerSpace()
+    {
+        free( K );
+    }
+
+    unsigned long int next()
+    {
+        head += 5;
+        unsigned long int temp = 0;
+        memcpy( &temp, head, 5 );
+        return temp;
+    }
+
+    bool empty()
+    {
+        return (head == tail);
+    }
+};
+
 /*
- * A class for the dist array used in BFS. The array is chopped into
- * subarrays to avoid failures of dynamic allocation.
+ * A class for the dist array used in BFS. The array is chopped into subarrays to avoid
+ * failures of dynamic allocation.
  */
 class DistArray
 {
@@ -76,7 +146,7 @@ public:
     DistArray( unsigned long int s, unsigned int d )
     {
         sub_size = 1;
-        sub_size = sub_size << 20;
+        sub_size = sub_size << 30;
         num_subs = s / 4 / sub_size; // Each element occupies 1/4 bytes.
         if ( (s / 4) % sub_size != 0 )
         {
@@ -154,6 +224,89 @@ public:
         body = body << (6 - offset);
         tempByte = tempByte | body;
         memcpy( &aptrs[bytePos/sub_size][bytePos%sub_size], &tempByte, 1 );
+    }
+};
+
+/*
+ * A data structure to store the coveage information for kmers. The array is chopped into
+ * subarrays to avoid failures of dynamic allocation.
+ */
+class CoverageArray
+{
+private:
+    char **aptrs;               // An array of pointers to subarrays
+    unsigned long int size;     // The capacity of the whole array in elements
+    unsigned long int num_subs; // Number of subarrays
+    unsigned long int sub_size; // Size of a subarray in bytes
+
+public:
+    /*
+     * Constructor
+     *
+     * s    : capacity of the array
+     * value: the default value of an element
+     */
+    CoverageArray( unsigned long int s, unsigned long int value )
+    {
+        sub_size = 1;
+        sub_size = sub_size << 30;
+        num_subs = s * 5 / sub_size; // Each element occupies 5 bytes.
+        if ( (s * 5) % sub_size != 0 )
+        {
+            num_subs++;
+        }
+        aptrs = (char **) calloc( num_subs, sizeof(char *) );
+        for (int i = 0; i < num_subs; ++i)
+        {
+            // Add a few extra bytes to the end of each subarray to avoid potential out
+            // of range access
+            aptrs[i] = (char *) malloc( sub_size + 5 );
+            for (unsigned long int j = 0; j < sub_size; j += 5)
+            {
+                memcpy( &aptrs[i][j], &value, 5);
+            }
+        }
+        size = s;
+    }
+
+    /*
+     * Destructor
+     */
+    ~CoverageArray()
+    {
+        for (int i = 0; i < num_subs; ++i)
+        {
+            free( aptrs[i] );
+        }
+        free( aptrs );
+    }
+
+    /*
+     * Overload [] operator to return the coverage of the kmer indexed by sub
+     *
+     * sub: The index of the element to be extract
+     */
+    unsigned long int operator[]( const unsigned long int &sub )
+    {
+        // Find the byte position where the required element is located
+        // Use modulo to avoid index out of range
+        unsigned long int bytePos = (sub % size) * 5;
+
+        unsigned long int cov = 0;
+        memcpy( &cov, &aptrs[bytePos/sub_size][bytePos%sub_size], 5);
+        return cov;
+    }
+    
+    /*
+     * Set the coverage for an element indexed by sub
+     *
+     * sub: The index of the element
+     * cov: The coverage of the element
+     */
+    void setCov( const unsigned long int sub, unsigned long int cov )
+    {
+        unsigned long int bytePos = (sub % size) * 5;
+        memcpy( &aptrs[bytePos/sub_size][bytePos%sub_size], &cov, 5);
     }
 };
 
@@ -305,6 +458,40 @@ void getNeighbor( unsigned long int enc, int k, unordered_set<unsigned long int>
 }
 
 /*
+ * Asks neighbors for possible coverage. Returns true if a feasible answer is found.
+ *
+ * enc     : The binary encoding of the k-mer
+ * k       : The length of the k-mer
+ * d       : The maximum edit distance allowed
+ * coverage: The coverage array
+ */
+bool askNeighbors( const unsigned long int enc, const int k, const int d, CoverageArray &coverage )
+{
+    unordered_set<unsigned long int> asked;   // A set to store asked neighbors
+    unordered_set<unsigned long int> checked; // A set to store checked possibilities
+    for ( int j = 1; j <= k; ++j )
+    {
+        unsigned long int head = (enc >> (2 * j)) << (2 * j);
+        unsigned long int tail = (enc << 1 << (63 - 2 * (j - 1))) >> (63 - 2 * (j - 1)) >> 1;
+        for ( unsigned long int l = 0; l < 4; ++l )
+        {
+            unsigned long int body = l << (2 * (j - 1));
+            unsigned long int node = head + body + tail;
+            if ( asked.emplace(node).second )
+            {
+                unsigned long int temp = coverage[node];
+                if ( checked.emplace(temp).second && editDist(temp, enc, k, d) <= d )
+                {
+                    coverage.setCov(enc, temp);
+                    return true;
+                }
+            }
+        }
+    }
+    return false;
+}
+
+/*
  * Reports the time and space usage
  */
 void reportPerformance()
@@ -344,6 +531,12 @@ void reportPerformance()
          << "Peak resident set size:   " << vmhwm << " kB\n\n";
 }
 
+/*
+ * Implementation of the BFS variant method
+ *
+ * k: The length of the k-mer
+ * d: The maximum edit distance allowed
+ */
 void doBFS( const int k, const int d )
 {
     cerr << "Please enter k: ";
@@ -364,25 +557,28 @@ void doBFS( const int k, const int d )
     num_kPlus1mers = num_kPlus1mers << (2 * (k+1));
     DistArray dist_kPlus1mer(num_kPlus1mers, d);
 
-    // Generate the k-mer space
-    unordered_set<unsigned long int> kmerSpace;
-    for (unsigned long int i = 0; i < num_kmers; ++i)
-    {
-        kmerSpace.emplace( i );
-    }
+    KmerSpace kmerSpace( num_kmers );
 
-    srand( time(nullptr) );
     unsigned long int num_indep_nodes = 0;
     cerr << "\nList of independent nodes: " << endl;
-    while ( !kmerSpace.empty() )
+    while ( true )
     {
-        unsigned long int picked = rand() % kmerSpace.size();
-        auto temp = kmerSpace.begin();
-        for (unsigned long int j = 0; j < picked; ++j)
+        unsigned long int i;
+        bool end = true;
+        while ( !kmerSpace.empty() )
         {
-            temp++;
+            end = false;
+            i = kmerSpace.next();
+            if ( dist_kmer[i] == (d + 1)/2 - 1 )
+            {
+                break;
+            }
+            end = true;
         }
-        unsigned long int i = *temp;
+        if ( end )
+        {
+            break;
+        }
         printKmer(i << 2, k);
         cerr << ' ';
         num_indep_nodes++;
@@ -396,14 +592,6 @@ void doBFS( const int k, const int d )
         dist_kmer.setDist(i, 0);
         while ( !Q.empty() )
         {
-            if ( (Q[0] & 3) == 1 )
-            {
-                auto index = kmerSpace.find( Q[0] >> 2 );
-                if ( index != kmerSpace.end() )
-                {
-                    kmerSpace.erase(index);
-                }
-            }
             auto q0 = hist.find( Q[0] );
             if ( q0->second + 1 > d )
             {
@@ -487,6 +675,12 @@ void doBFS( const int k, const int d )
     reportPerformance();
 }
 
+/*
+ * Implementation of the simple pairwise comparison method
+ *
+ * k: The length of the k-mer
+ * d: The maximum edit distance allowed
+ */
 void doPairwiseCmp( const int k, const int d )
 {
     cerr << "Please enter k: ";
@@ -496,24 +690,16 @@ void doPairwiseCmp( const int k, const int d )
 
     unsigned long int kmerSpaceSize = 1;
     kmerSpaceSize = kmerSpaceSize << (2 * k);
-
-    // Generate the k-mer space
-    vector<unsigned long int> kmerSpace;
-    for (unsigned long int i = 0; i < kmerSpaceSize; ++i)
-    {
-        kmerSpace.push_back( i );
-    }
-    unsigned seed = chrono::system_clock::now().time_since_epoch().count();
-    shuffle( kmerSpace.begin(), kmerSpace.end(), default_random_engine(seed) );
+    KmerSpace kmerSpace( kmerSpaceSize );
 
     vector<unsigned long int> MIS;
     bool isCovered = false;
+    unsigned long int i;
 
     cerr << "\nList of independent nodes: " << endl;
     while ( !kmerSpace.empty() )
     {
-        unsigned long int i = *kmerSpace.begin();
-        kmerSpace.erase(kmerSpace.begin());
+        i = kmerSpace.next();
 
         for ( const unsigned long int &j : MIS )
         {
@@ -537,6 +723,90 @@ void doPairwiseCmp( const int k, const int d )
     reportPerformance();
 }
 
+/*
+ * Implementation of the nearest neighbor consultant method
+ *
+ * k: The length of the k-mer
+ * d: The maximum edit distance allowed
+ */
+void doNNC( const int k, const int d )
+{
+    cerr << "Please enter k: ";
+    cerr << k << endl;
+    cerr << "Plesae enter d: ";
+    cerr << d << endl;
+
+    unsigned long int kmerSpaceSize = 1;
+    kmerSpaceSize = kmerSpaceSize << (2 * k);
+    KmerSpace kmerSpace( kmerSpaceSize );
+
+    unsigned long int i = kmerSpace.next();
+    vector<unsigned long int> MIS;
+    MIS.push_back( i );
+    CoverageArray coverage(kmerSpaceSize / 4, i);
+    cerr << "\nList of independent nodes: " << endl;
+    printKmer( i << 2, k );
+    cerr << ' ';
+    bool isCovered = false;
+
+    while ( !kmerSpace.empty() )
+    {
+        i = kmerSpace.next();
+        if ( askNeighbors(i, k, d, coverage) )
+        {
+            continue;
+        }
+
+        for ( const unsigned long int &j : MIS )
+        {
+            if ( editDist(i, j, k, d) <= d )
+            {
+                coverage.setCov(i, j);
+                isCovered = true;
+                break;
+            }
+        }
+        if ( isCovered )
+        {
+            isCovered = false;
+            continue;
+        }
+        printKmer( i << 2, k );
+        cerr << ' ';
+        MIS.push_back( i );
+        coverage.setCov( i, i );
+    }
+
+    cerr << "\nThe graph has an independent set of size " << MIS.size() << ".\n\n";
+    reportPerformance();
+}
+
+int main()
+{
+    int k;
+    int d;
+    cerr << "Please enter k: ";
+    cin >> k;
+    cerr << k << endl;
+    cerr << "Plesae enter d: ";
+    cin >> d;
+    cerr << d << endl;
+
+    if ( d < 5 )
+    {
+        doBFS( k, d );
+    }
+    else if ( d < 8 )
+    {
+        doNNC( k, d );
+    }
+    else
+    {
+        doPairwiseCmp( k, d );
+    }
+    return 0;
+}
+
 int main()
 {
     int k = 10;
@@ -558,6 +828,11 @@ int main()
                 if ( i < 5 )
                 {
                     doBFS( k, i );
+                    return 0;
+                }
+                else if ( i < 9 )
+                {
+                    doNNC( k, i );
                     return 0;
                 }
                 else

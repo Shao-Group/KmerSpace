@@ -68,7 +68,6 @@ using namespace std;
 class KmerSpace
 {
 private:
-    unsigned long int size; // The number of kmers in the space
     char *K;                // The pointer to the kmer space
     char *head;             // The head pointer
     char *tail;             // The tail pointer
