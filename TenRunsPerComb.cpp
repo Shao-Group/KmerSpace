@@ -66,6 +66,9 @@
 
 using namespace std;
 
+/*
+ * A class for the kmer space
+ */
 class KmerSpace
 {
 private:
@@ -778,7 +781,7 @@ int main()
     pid_t parent_id = getpid();
     srand( time(nullptr) );
 
-    for (int i = 0; i < k; ++i) // Iterate over all possible d's
+    for (int i = 1; i < k; ++i) // Iterate over all possible d's
     {
         cerr << "Ten runs for k=" << k << " and d=" << i << ':' << endl;
         for (int j = 0; j < 10; ++j)
