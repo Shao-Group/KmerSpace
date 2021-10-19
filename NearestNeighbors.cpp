@@ -64,7 +64,9 @@ public:
         aptrs = (char **) calloc( num_subs, sizeof(char *) );
         for (int i = 0; i < num_subs; ++i)
         {
-            aptrs[i] = (char *) calloc( sub_size, 1 );
+            // Add a few extra bytes to the end of each subarray to avoid potential out
+            // of range access
+            aptrs[i] = (char *) calloc( sub_size + 5, 1 );
         }
         size = s;
     }
