@@ -68,7 +68,7 @@ kmer encode(const char* str, const int k){
 
 char* decode(const kmer enc, const int k, char* str){
     if(str == NULL){
-	str = malloc(sizeof *str *k);
+	str = malloc_harder(sizeof *str *k);
     }
     kmer enc_copy = enc;
     char base[] = {'A', 'C', 'G', 'T'};
@@ -84,7 +84,7 @@ kmer* readCentersFromFile(const char* filename, const int k, size_t* numOfCenter
   FILE* fin = fopen(filename, "r");
 
   fscanf(fin, "%zu\n", numOfCenters);
-  kmer* centers = malloc(sizeof *centers *(*numOfCenters));
+  kmer* centers = malloc_harder(sizeof *centers *(*numOfCenters));
 
   int buffersize = k+2;//for \n and \0
   char kmer_str[buffersize];
@@ -111,4 +111,26 @@ void readKMerHashFromFile(const char* filename, const int k, int* h){
     }
 
     fclose(fin);
+}
+
+void* malloc_harder(size_t size){
+    void* ptr;
+    while((ptr = malloc(size)) == NULL){
+	sleep(30);
+    }
+    return ptr;
+}
+void* calloc_harder(size_t num, size_t size){
+    void* ptr;
+    while((ptr = calloc(num, size)) == NULL){
+	sleep(30);
+    }
+    return ptr;
+}
+void* realloc_harder(void* ptr, size_t new_size){
+    void* new_ptr;
+    while((new_ptr = realloc(ptr, new_size)) == NULL){
+	sleep(30);
+    }
+    return new_ptr;
 }

@@ -9,6 +9,7 @@
 
 #include <stdlib.h>
 #include <stdio.h>
+#include <unistd.h> //for sleep
 
 /*
   Leran@PSU provides the centers of the partitions. 
@@ -56,5 +57,12 @@ kmer* readCentersFromFile(const char* filename, const int k, size_t* numOfCenter
   partitionByLayersCheckByNeighbors.c can be used.
 */
 void readKMerHashFromFile(const char* filename, const int k, int* h);
+
+/*
+  If memory allocation failed, sleep for 30s and try again until success.
+*/
+void* malloc_harder(size_t size);
+void* calloc_harder(size_t num, size_t size);
+void* realloc_harder(void* ptr, size_t new_size);
 
 #endif // util.h

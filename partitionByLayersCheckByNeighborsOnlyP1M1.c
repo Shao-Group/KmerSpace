@@ -87,7 +87,7 @@ typedef struct{
 void IslandInit(Island* id, const kmer c){
     id->center = c;
 
-    id->bfs_layer = malloc(sizeof *(id->bfs_layer));
+    id->bfs_layer = malloc_harder(sizeof *(id->bfs_layer));
     AListInit(id->bfs_layer);
     AListInsert(id->bfs_layer, c);
 }
@@ -355,7 +355,7 @@ int main(int argc, char* argv[]){
     char* hash_file = argv[5];
 
     size_t NUM_KMERS = (1<<(k<<1));
-    int* h = malloc(sizeof *h *NUM_KMERS);
+    int* h = malloc_harder(sizeof *h *NUM_KMERS);
 
     size_t i, j;
     for(i=0; i<NUM_KMERS; i+=1){
@@ -365,20 +365,20 @@ int main(int argc, char* argv[]){
     
     
     size_t NUM_KM1MERS = NUM_KMERS >> 2;
-    int* h_m1 = malloc(sizeof *h_m1 *NUM_KM1MERS);
+    int* h_m1 = malloc_harder(sizeof *h_m1 *NUM_KM1MERS);
     for(i=0; i<NUM_KM1MERS; i+=1){
 	h_m1[i] = -3;
     }
 
     size_t NUM_KP1MERS = NUM_KMERS << 2;
-    int* h_p1 = malloc(sizeof *h_p1 *NUM_KP1MERS);
+    int* h_p1 = malloc_harder(sizeof *h_p1 *NUM_KP1MERS);
     for(i=0; i<NUM_KP1MERS; i+=1){
 	h_p1[i] = -3;
     }
 
     size_t NUM_CENTERS;
     kmer* centers = readCentersFromFile(centers_file, k, &NUM_CENTERS);
-    Island* islands = malloc(sizeof *islands *NUM_CENTERS);
+    Island* islands = malloc_harder(sizeof *islands *NUM_CENTERS);
 
     for(i=0; i<NUM_CENTERS; i+=1){
 	h[centers[i]] = i;

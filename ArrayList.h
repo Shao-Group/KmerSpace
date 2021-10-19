@@ -7,7 +7,8 @@
 #ifndef _ARRAYLIST_H
 #define _ARRAYLIST_H 1
 
-#include <stdlib.h>
+#include "util.h"
+//#include <stdlib.h>
 
 typedef struct {
     long unsigned* arr;
