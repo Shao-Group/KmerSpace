@@ -182,13 +182,12 @@ public:
     /*
      * Constructor
      *
-     * s    : capacity of the array
-     * value: the default value of an element
+     * s: capacity of the array
      */
-    CoverageArray( unsigned long int s, unsigned long int value )
+    CoverageArray( unsigned long int s )
     {
         sub_size = 1;
-        sub_size = sub_size << 20;
+        sub_size = sub_size << 30;
         num_subs = s * 5 / sub_size; // Each element occupies 5 bytes.
         if ( (s * 5) % sub_size != 0 )
         {
@@ -199,11 +198,7 @@ public:
         {
             // Add a few extra bytes to the end of each subarray to avoid potential out
             // of range access
-            aptrs[i] = (char *) malloc( sub_size + 5 );
-            for (unsigned long int j = 0; j < sub_size; j += 5)
-            {
-                memcpy( &aptrs[i][j], &value, 5);
-            }
+            aptrs[i] = (char *) calloc( sub_size + 5, 1 );
         }
         size = s;
     }
