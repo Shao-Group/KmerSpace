@@ -119,6 +119,7 @@ public:
 
     void shuffle()
     {
+        sleep(1);
         srand( time(nullptr) );
         for ( unsigned long int i = size - 1; i >= 1; --i )
         {
@@ -776,15 +777,44 @@ void doNNC( const int k, const int d )
     reportPerformance();
 }
 
-int main()
+int main(int argc, char *argv[])
 {
     int k = 15;
+    int d0 = 1;
+    int d1 = k - 1;
+    int iter = 10;
+
+    for (int i = 0; i < argc; ++i)
+    {
+        if ( strcmp(argv[i], "-k") == 0 )
+        {
+            k = atoi( argv[i+1] );
+        }
+        else if ( strcmp(argv[i], "-d0") == 0 )
+        {
+            d0 = atoi( argv[i+1] );
+        }
+        else if ( strcmp(argv[i], "-d1") == 0 )
+        {
+            d1 = atoi( argv[i+1] );
+        }
+        else if ( strcmp(argv[i], "-it") == 0 )
+        {
+            iter = atoi( argv[i+1] );
+        }
+    }
+
+    if ( d1 >= k )
+    {
+        d1 = k - 1;
+    }
+
     pid_t parent_id = getpid();
 
-    for (int i = 1; i < k; ++i) // Iterate over all possible d's
+    for (int i = d0; i < d1 + 1; ++i) // Iterate over all possible d's
     {
-        cerr << "Ten runs for k=" << k << " and d=" << i << ':' << endl;
-        for (int j = 0; j < 10; ++j)
+        cerr << iter << " run(s) for k=" << k << " and d=" << i << ':' << endl;
+        for (int j = 0; j < iter; ++j)
         {
             cerr << j + 1 << '.' << endl;
             fork();
@@ -799,7 +829,7 @@ int main()
                     doBFS( k, i );
                     return 0;
                 }
-                else if ( i < 8 )
+                else if ( i < 9 )
                 {
                     doNNC( k, i );
                     return 0;
