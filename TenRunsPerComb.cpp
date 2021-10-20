@@ -119,6 +119,7 @@ public:
 
     void shuffle()
     {
+        srand( time(nullptr) );
         for ( unsigned long int i = size - 1; i >= 1; --i )
         {
             unsigned long int j = rand() % (i + 1);
@@ -374,8 +375,8 @@ void printKmer( unsigned long int enc, int k )
     kmer[k] = '\0';
     for (int i = k - 1; i >= 0; --i)
     {
-        enc = enc >> 2;
         kmer[i] = base[enc & 3];
+        enc = enc >> 2;
     }
     cerr << kmer;
 }
@@ -581,7 +582,7 @@ void doBFS( const int k, const int d )
         {
             break;
         }
-        printKmer(i << 2, k);
+        printKmer(i, k);
         cerr << ' ';
         num_indep_nodes++;
 
@@ -712,7 +713,7 @@ void doPairwiseCmp( const int k, const int d )
             isCovered = false;
             continue;
         }
-        printKmer( i << 2, k );
+        printKmer( i, k );
         cerr << ' ';
         MIS.push_back( i );
     }
@@ -739,7 +740,7 @@ void doNNC( const int k, const int d )
     MIS.push_back( i );
     CoverageArray coverage(kmerSpaceSize / 4, i);
     cerr << "\nList of independent nodes: " << endl;
-    printKmer( i << 2, k );
+    printKmer( i, k );
     cerr << ' ';
     bool isCovered = false;
 
@@ -765,7 +766,7 @@ void doNNC( const int k, const int d )
             isCovered = false;
             continue;
         }
-        printKmer( i << 2, k );
+        printKmer( i, k );
         cerr << ' ';
         MIS.push_back( i );
         coverage.setCov( i, i );
@@ -779,7 +780,6 @@ int main()
 {
     int k = 15;
     pid_t parent_id = getpid();
-    srand( time(nullptr) );
 
     for (int i = 1; i < k; ++i) // Iterate over all possible d's
     {
@@ -799,7 +799,7 @@ int main()
                     doBFS( k, i );
                     return 0;
                 }
-                else if ( i < 9 )
+                else if ( i < 8 )
                 {
                     doNNC( k, i );
                     return 0;
