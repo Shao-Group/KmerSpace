@@ -472,6 +472,11 @@ void reportPerformance()
  */
 void doBFS( const int k, const int d )
 {
+    cerr << "Please enter k: ";
+    cerr << k << endl;
+    cerr << "Plesae enter d: ";
+    cerr << d << endl;
+
     // Initialize dist arrays for BFS
     unsigned long int num_kmers = 1;
     num_kmers = num_kmers << (2 * k);
@@ -596,6 +601,11 @@ void doBFS( const int k, const int d )
  */
 void doPairwiseCmp( const int k, const int d )
 {
+    cerr << "Please enter k: ";
+    cerr << k << endl;
+    cerr << "Plesae enter d: ";
+    cerr << d << endl;
+
     unsigned long int kmerSpaceSize = 1;
     kmerSpaceSize = kmerSpaceSize << (2 * k);
 
@@ -638,6 +648,11 @@ void doPairwiseCmp( const int k, const int d )
  */
 void doNNC( const int k, const int d )
 {
+    cerr << "Please enter k: ";
+    cerr << k << endl;
+    cerr << "Plesae enter d: ";
+    cerr << d << endl;
+
     unsigned long int kmerSpaceSize = 1;
     kmerSpaceSize = kmerSpaceSize << (2 * k);
 
@@ -688,10 +703,10 @@ int main()
 
     for (int i = 1; i < k; ++i) // Iterate over all possible d's
     {
-        // cerr << "Ten runs for k=" << k << " and d=" << i << ':' << endl;
-        for (int j = 0; j < 1; ++j)
+        cerr << "Ten runs for k=" << k << " and d=" << i << ':' << endl;
+        for (int j = 0; j < 10; ++j)
         {
-            // cerr << j + 1 << '.' << endl;
+            cerr << j + 1 << '.' << endl;
             fork();
             if ( getpid() == parent_id )
             {
