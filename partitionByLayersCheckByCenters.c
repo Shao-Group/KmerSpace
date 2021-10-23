@@ -87,13 +87,13 @@ void IslandInit(Island* id, const kmer c){
 
     id->bfs_layer = malloc_harder(sizeof *(id->bfs_layer));
     AListInit(id->bfs_layer);
-    AListInsert(id->bfs_layer, c);
+    AListInsert(id->bfs_layer, (void*)c);
 }
 
 void IslandFree(Island* id){
-    AListFree(id->neighbor_indices);
+    AListFree(id->neighbor_indices, NULL);
     free(id->neighbor_indices);
-    AListFree(id->bfs_layer);
+    AListFree(id->bfs_layer, NULL);
     free(id->bfs_layer);
 }
 
@@ -133,7 +133,7 @@ void getNextLayer(Island* id, const int k, int* h, bool* visited){
     size_t i, j;
     kmer s, head, body, tail, x, m;
     for(i=0; i<id->bfs_layer->used; i+=1){
-	s = id->bfs_layer->arr[i];
+	s = (kmer) id->bfs_layer->arr[i];
 	//k-mer
 	if(s<luMSB){
 	    //deletion
@@ -144,7 +144,7 @@ void getNextLayer(Island* id, const int k, int* h, bool* visited){
 		//skip if visited
 		if(visited[x]) continue;
 		else{
-		    AListInsert(new_layer, x|luMSB);
+		    AListInsert(new_layer, (void*)(x|luMSB));
 		    visited[x] = TRUE;
 		}
 	    }
@@ -158,7 +158,7 @@ void getNextLayer(Island* id, const int k, int* h, bool* visited){
 		    //skip if visited
 		    if(h[x] != -3) continue;
 		    else{
-			AListInsert(new_layer, x);
+			AListInsert(new_layer, (void*)x);
 			h[x] = -2;
 		    }
 		}
@@ -176,7 +176,7 @@ void getNextLayer(Island* id, const int k, int* h, bool* visited){
 		    //skip if visited
 		    if(h[x] != -3) continue;
 		    else{
-			AListInsert(new_layer, x);
+			AListInsert(new_layer, (void*)x);
 			h[x] = -2;
 		    }
 		}
@@ -184,7 +184,7 @@ void getNextLayer(Island* id, const int k, int* h, bool* visited){
 	}
     }
     
-    AListFree(id->bfs_layer);
+    AListFree(id->bfs_layer, NULL);
     free(id->bfs_layer);
     id->bfs_layer = new_layer;
 }
@@ -231,8 +231,8 @@ int main(int argc, char* argv[]){
 	for(j=i+1; j<NUM_CENTERS; j+=1){
 	    dist = editDist(islands[i].center, islands[j].center, k, -1);
 	    if(dist <= threshold){
-		AListInsert(islands[i].neighbor_indices, j);
-		AListInsert(islands[j].neighbor_indices, i);
+		AListInsert(islands[i].neighbor_indices, (void*)j);
+		AListInsert(islands[j].neighbor_indices, (void*)i);
 	    }
 	}
 	//may save some space
@@ -258,7 +258,7 @@ int main(int argc, char* argv[]){
 	    cur_center = &islands[i];
 	    //generate all k-mers radius away from ci
 	    getNextLayer(cur_center, k, h, visited);
-	    kmer* layer = cur_center->bfs_layer->arr;
+	    kmer* layer = (kmer*) cur_center->bfs_layer->arr;
 	    
 	    for(j=0; j<cur_center->bfs_layer->used; j+=1){
 		s = layer[j];
@@ -267,7 +267,7 @@ int main(int argc, char* argv[]){
 		conflict = FALSE;
 		//for each neighbor of ci
 		for(m=0; m<cur_center->neighbor_indices->used; m+=1){
-		    neighbor = islands[cur_center->neighbor_indices->arr[m]];
+		    neighbor = islands[(size_t)(cur_center->neighbor_indices->arr[m])];
 		    dist = editDist(s, neighbor.center, k, -1);
 		    //if dist<r, s would have been examined by neighbor before
 		    if(dist - radius < p){

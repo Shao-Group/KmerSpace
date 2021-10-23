@@ -10,7 +10,13 @@ void AListInitSize(ArrayList* list, size_t size){
     list->used = 0;
 }
 
-void AListFree(ArrayList* list){
+void AListFree(ArrayList* list, void (*freeData)(void*)){
+    if(freeData){
+	int i;
+	for(i=0; i<list->used; i+=1){
+	    freeData(list->arr[i]);
+	}
+    }
     free(list->arr);
     list->arr = NULL;
     list->used = 0;
@@ -26,14 +32,20 @@ void AListTrim(ArrayList* list){
     AListResize(list, list->used);
 }
 
-void AListInsert(ArrayList* list, long unsigned enc){
+void AListInsert(ArrayList* list, void* data){
     if(list->used == list->size){
         AListResize(list, list->size*2);
     }
-    list->arr[list->used++] = enc;
+    list->arr[list->used++] = data;
 }
 
-void AListClear(ArrayList* list){
+void AListClear(ArrayList* list, void (*freeData)(void*)){
+    if(freeData){
+	int i;
+	for(i=0; i<list->used; i+=1){
+	    freeData(list->arr[i]);
+	}
+    }
     list->used = 0;
 }
 
@@ -46,7 +58,7 @@ void AListSwap(ArrayList* la, ArrayList* lb){
     la->used = lb->used;
     lb->used = tmp;
 
-    long unsigned* arr_ptr = la->arr;
+    void** arr_ptr = la->arr;
     la->arr = lb->arr;
     lb->arr = arr_ptr;
 }

@@ -87,11 +87,11 @@ void IslandInit(Island* id, const kmer c){
 
     id->bfs_layer = malloc_harder(sizeof *(id->bfs_layer));
     AListInit(id->bfs_layer);
-    AListInsert(id->bfs_layer, c);
+    AListInsert(id->bfs_layer, (void*) c);
 }
 
 void IslandFree(Island* id){
-    AListFree(id->bfs_layer);
+    AListFree(id->bfs_layer, NULL);
     free(id->bfs_layer);
 }
 
@@ -112,7 +112,7 @@ void getNextLayer(Island* id, const int k, int* h, bool* visited){
     size_t i, j;
     kmer s, head, body, tail, x, m;
     for(i=0; i<id->bfs_layer->used; i+=1){
-	s = id->bfs_layer->arr[i];
+	s = (kmer) id->bfs_layer->arr[i];
 	//k-mer
 	if(s<luMSB){
 	    //deletion
@@ -123,7 +123,7 @@ void getNextLayer(Island* id, const int k, int* h, bool* visited){
 		//skip if visited
 		if(visited[x]) continue;
 		else{
-		    AListInsert(new_layer, x|luMSB);
+		    AListInsert(new_layer, (void*)(x|luMSB));
 		    visited[x] = TRUE;
 		}
 	    }
@@ -137,7 +137,7 @@ void getNextLayer(Island* id, const int k, int* h, bool* visited){
 		    //skip if visited
 		    if(h[x] != -3) continue;
 		    else{
-			AListInsert(new_layer, x);
+			AListInsert(new_layer, (void*)x);
 			h[x] = -2;
 		    }
 		}
@@ -155,7 +155,7 @@ void getNextLayer(Island* id, const int k, int* h, bool* visited){
 		    //skip if visited
 		    if(h[x] != -3) continue;
 		    else{
-			AListInsert(new_layer, x);
+			AListInsert(new_layer, (void*)x);
 			h[x] = -2;
 		    }
 		}
@@ -163,16 +163,16 @@ void getNextLayer(Island* id, const int k, int* h, bool* visited){
 	}
     }
     
-    AListFree(id->bfs_layer);
+    AListFree(id->bfs_layer, NULL);
     free(id->bfs_layer);
     id->bfs_layer = new_layer;
 }
 
-bool cleanAndReturnConflict(bool conflict, HashTable* visited,
+static inline bool cleanAndReturnConflict(bool conflict, HashTable* visited,
 			    ArrayList* cur_layer, ArrayList* next_layer){
     HTableFree(visited);
-    AListFree(cur_layer);
-    AListFree(next_layer);
+    AListFree(cur_layer, NULL);
+    AListFree(next_layer, NULL);
     return conflict;
 }
 /*
@@ -189,7 +189,7 @@ bool conflictWithNeighbors(kmer s, int k, int depth, size_t c, int* h){
     AListInit(&next_layer);
 
     HTableInsert(&visited, s);
-    AListInsert(&cur_layer, s);
+    AListInsert(&cur_layer, (void*)s);
 
     size_t i, j;
     kmer head, body, tail, x, m;
@@ -197,7 +197,7 @@ bool conflictWithNeighbors(kmer s, int k, int depth, size_t c, int* h){
     while(depth > 0){
 	depth -= 1;
 	for(i=0; i<cur_layer.used; i+=1){
-	    s = cur_layer.arr[i];
+	    s = (kmer) cur_layer.arr[i];
 	    //(k-1)-mer, no need to ^luMSB as the head will shift MSB out
 	    if(s>=luMSB){
 		//insertion
@@ -209,13 +209,13 @@ bool conflictWithNeighbors(kmer s, int k, int depth, size_t c, int* h){
 			x = head|body|tail;
 			//check conflict
 			if(h[x] >= 0 && h[x] != c){
-			    return  cleanAndReturnConflict(TRUE, &visited,
+			    return cleanAndReturnConflict(TRUE, &visited,
 							   &cur_layer,
 							   &next_layer);
 			}
 			//add to next_layer if not visited
 			else if(!HTableSearch(&visited, x)){
-			    AListInsert(&next_layer, x);
+			    AListInsert(&next_layer, (void*) x);
 			    HTableInsert(&visited, x);
 			}
 		    }
@@ -231,7 +231,7 @@ bool conflictWithNeighbors(kmer s, int k, int depth, size_t c, int* h){
 		    //(k-1)-mer won't cause conflict
 		    //add to next_layer if not visited
 		    if(!HTableSearch(&visited, x)){
-			AListInsert(&next_layer, x);
+			AListInsert(&next_layer, (void*)x);
 			HTableInsert(&visited, x);
 		    }
 		    
@@ -245,13 +245,13 @@ bool conflictWithNeighbors(kmer s, int k, int depth, size_t c, int* h){
 			x = head|body|tail;
 			//check conflict
 			if(h[x] >= 0 && h[x] != c){
-			    return  cleanAndReturnConflict(TRUE, &visited,
+			    return cleanAndReturnConflict(TRUE, &visited,
 							   &cur_layer,
 							   &next_layer);
 			}
 			//add to next_layer if not visited
 			else if(!HTableSearch(&visited, x)){
-			    AListInsert(&next_layer, x);
+			    AListInsert(&next_layer, (void*)x);
 			    HTableInsert(&visited, x);
 			}
 		    }
@@ -259,14 +259,13 @@ bool conflictWithNeighbors(kmer s, int k, int depth, size_t c, int* h){
 	    }//end k-mer
 	}//end for each in cur_layer
 
-	AListClear(&cur_layer);
+	AListClear(&cur_layer, NULL);
 	AListSwap(&cur_layer, &next_layer);
     }
-    
-    AListFree(&cur_layer);
-    AListFree(&next_layer);
-    HTableFree(&visited);
-    return FALSE;
+
+    return cleanAndReturnConflict(FALSE, &visited,
+				   &cur_layer,
+				   &next_layer);
 }
 
 int main(int argc, char* argv[]){
@@ -315,7 +314,7 @@ int main(int argc, char* argv[]){
 	    cur_center = &islands[i];
 	    //generate all k-mers radius away from ci
 	    getNextLayer(cur_center, k, h, h_m1);
-	    kmer* layer = cur_center->bfs_layer->arr;
+	    kmer* layer = (kmer*) cur_center->bfs_layer->arr;
 	    
 	    for(j=0; j<cur_center->bfs_layer->used; j+=1){
 		s = layer[j];
