@@ -137,6 +137,9 @@ int cmpNeighborCenterByDistAsc(const void* c1, const void* c2){
     return (*(NeighborCenter**) c1)->dist - (*(NeighborCenter**) c2)->dist;
 }
 
+//this version does not work well for Jaccard Similarity, will output raw dist instead
+//weight can then be calculated as needed
+/*
 void fprintNeighborCenters(FILE* fout, ArrayList* list){
     int ct = list->used;
     if(ct == 0){
@@ -180,6 +183,27 @@ void fprintNeighborCenters(FILE* fout, ArrayList* list){
     fprintf(fout, "\n");
 
 }
+*/
+void fprintNeighborCenters(FILE* fout, ArrayList* list){
+    int ct = list->used;
+    if(ct == 0){
+	fprintf(fout, "\n");
+	return;
+    }
+
+    qsort(list->arr, ct, sizeof(NeighborCenter*), cmpNeighborCenterByDistAsc);
+
+    int i;
+    NeighborCenter* cur;
+    for(i=0; i<ct; i+=1){
+	cur = (NeighborCenter*)list->arr[i];
+	fprintf(fout, " %zu %d",
+	        cur->center_idx, cur->dist);
+    }
+    fprintf(fout, "\n");
+
+}
+
 
 int main(int argc, char* argv[]){
     if(argc != 4){
