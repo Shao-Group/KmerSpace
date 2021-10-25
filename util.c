@@ -51,6 +51,44 @@ int editDist2(const kmer s1, const int k1, const kmer s2, const int k2, const in
     return row[diag_index];
 }
 
+int editDist3(const char* s1, const int l1, const char* s2, const int l2, const int max_d){
+    if(l1 > l2) return editDist3(s2, l2, s1, l1, max_d);
+    int diag_index = l2 - l1;
+    if(max_d >= 0 && diag_index >= max_d) return diag_index;
+    
+    int row[l2+1];
+    int i, j, diag, cur,tmp;
+    for(i=0; i<l2+1; i+=1){
+	row[i] = i;
+    }
+
+    for(i=1; i<l1+1; i+=1){
+	diag_index += 1;
+	diag = row[0];
+	row[0] = i;
+	
+	for(j=1; j<l2+1; j+=1){
+	    //substitution
+	    cur = diag + (s1[i-1] == s2[j-1] ? 0 : 1);
+	    //deletion
+	    tmp = row[j] + 1;
+	    cur = cur > tmp ? tmp : cur;
+	    //insertion
+	    tmp = row[j-1] +1;
+	    cur = cur > tmp ? tmp : cur;
+	    
+	    diag = row[j];
+	    row[j] = cur;
+	}
+
+	if(max_d >= 0 && row[diag_index] >= max_d){
+	    break;
+	}
+    }
+
+    return row[diag_index];
+}
+
 kmer encode(const char* str, const int k){
     kmer enc = 0;
     int i, x;
