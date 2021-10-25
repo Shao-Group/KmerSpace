@@ -9,7 +9,7 @@ ALLDEP:= util.o ArrayList.o HashTable.o #AVLTree.o
 test: $(ALLDEP) test.out partitionByLayers.out
 
 product: CFLAGS = -O3
-product: $(ALLDEP) partitionByLayers.out partitionByLayersCheckByCenters.out partitionByLayersCheckByCentersWithP1M1.out partitionByLayersCheckByNeighborsWithP1M1.out partitionByLayersCheckByNeighbors.out partitionByLayersCheckByNeighborsOnlyP1M1.out
+product: $(ALLDEP) partitionByLayers.out partitionByLayersCheckByCenters.out partitionByLayersCheckByCentersWithP1M1.out partitionByLayersCheckByNeighborsWithP1M1.out partitionByLayersCheckByNeighbors.out partitionByLayersCheckByNeighborsOnlyP1M1.out assignAll.out
 
 %.out: %.c $(ALLDEP)
 	$(CC) $(CFLAGS) -o $@ $^ $(LIBS)

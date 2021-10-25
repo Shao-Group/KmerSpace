@@ -19,6 +19,13 @@
 typedef long unsigned kmer;
 
 /*
+  Calculate Levenshtein distance between two strings using Wagner-Fischer algorithm.
+  If max_d is nonnegative, the calculation may stop earlier if a diagonal entry
+  reaches max_d.
+*/
+int editDist3(const char* s1, const int l1, const char* s2, const int l2, const int max_d);
+
+/*
   Calculate Levenshtein distance between two x-mers using Wagner-Fischer algorithm.
   If max_d is nonnegative, the calculation may stop earlier if a diagonal entry
   reaches max_d.
