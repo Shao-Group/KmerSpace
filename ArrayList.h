@@ -1,17 +1,17 @@
 /*
-  A dynamic array based list for k-mers (long unsigned int).
+  A dynamic array based list.
   By Ke@PSU
-  Last modified: 10/11/2021
+  Last modified: 10/23/2021
 */
 
 #ifndef _ARRAYLIST_H
 #define _ARRAYLIST_H 1
 
-#include "util.h"
+#include "util.h" //use alloc_harder family
 //#include <stdlib.h>
 
 typedef struct {
-    long unsigned* arr;
+    void** arr;
     size_t size;
     size_t used;
 } ArrayList;
@@ -27,9 +27,9 @@ void AListInit(ArrayList* list);
 void AListInitSize(ArrayList* list, size_t size);
 
 /*
-  Free the entire array.
+  Free the entire array. Data parts are freed by the provided freeData function
 */
-void AListFree(ArrayList* list);
+void AListFree(ArrayList* list, void (*freeData)(void*));
 
 /*
   Trim the list to the minimum size needed.
@@ -40,12 +40,13 @@ void AListTrim(ArrayList* list);
   Insert a new k-mer into the array.
   If already full, the size of the array will be doubled before the insertion.
 */
-void AListInsert(ArrayList* list, long unsigned enc);
+void AListInsert(ArrayList* list, void* data);
 
 /*
   Clear used count so the array can be used as if a new one.
+  Pass in a freeData function if data inside needs to be freed.
 */
-void AListClear(ArrayList* list);
+void AListClear(ArrayList* list, void (*freeData)(void*));
 
 /*
   Swap two lists.
