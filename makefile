@@ -1,7 +1,8 @@
 CC=gcc
-CFLAGS+= -g -Wall
-LDFLAGS=
+CFLAGS+= -m64 -g -Wall
+LDFLAGS= -L$$GUROBI_HOME/lib -lgurobi91
 LIBS=
+INC= $$GUROBI_HOME/include/
 ALLDEP:= util.o ArrayList.o HashTable.o #AVLTree.o
 
 .PHONY: test
@@ -19,6 +20,10 @@ product: $(ALLDEP) partitionByLayers.out partitionByLayersCheckByCenters.out par
 %.MaxID: %.txt
 	grep -oE '[0-9]+' $^ | tail -1 > $@; \
 	sed -n '7 s/\r$$//p' $^ | sed 's/ /\n/g' >> $@
+
+#gurobi make
+%_ILP: %_ILP.c $(ALLDEP)
+	$(CC) $(CFLAGS) -o $@ $^ -I$(INC) $(LDFLAGS) -lm
 
 .PHONY: clean
 
