@@ -41,6 +41,10 @@ int main(int argc, char *argv[]){
     error = GRBsetstrparam(env, "LogFile", filename);
     if (error) goto QUIT;
 
+    //number of threads to use
+    error = GRBsetintparam(env, "Threads", 64);
+    if (error) goto QUIT;
+
     error = GRBstartenv(env);
     if (error) goto QUIT;
 
