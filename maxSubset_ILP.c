@@ -44,6 +44,9 @@ int main(int argc, char *argv[]){
     //number of threads to use
     error = GRBsetintparam(env, "Threads", 64);
     if (error) goto QUIT;
+    //disable screen output
+    error = GRBsetintparam(env, "LogToConsole", 0);
+    if (error) goto QUIT;
 
     error = GRBstartenv(env);
     if (error) goto QUIT;
