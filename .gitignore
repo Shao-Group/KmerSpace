@@ -8,3 +8,4 @@ test.c
 *.hash*
 *.lp
 *.result
+*_ILP
