@@ -16,7 +16,7 @@
 
 int main(int argc, char *argv[]){
     if(argc != 3){
-	printf("usage: maxSubset k d\n");
+	printf("usage: maxSubset_ILP k d\n");
 	return 1;
     }
 
