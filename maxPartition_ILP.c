@@ -256,7 +256,7 @@ QUIT:
     
     /* Error reporting */
     if (error) {
-	printf("ERROR: %s\n", GRBgeterrormsg(env));
+	printf("ERROR: %d - %s\n", error, GRBgeterrormsg(env));
 	exit(1);
     }
 
