@@ -118,7 +118,8 @@ char* decode(const kmer enc, const int k, char* str){
     return str;
 }
 
-kmer* readCentersFromFile(const char* filename, const int k, size_t* numOfCenters){
+kmer* readCentersFromFile(const char* filename, const int k,
+			  size_t* numOfCenters){
   FILE* fin = fopen(filename, "r");
 
   fscanf(fin, "%zu\n", numOfCenters);
@@ -127,7 +128,7 @@ kmer* readCentersFromFile(const char* filename, const int k, size_t* numOfCenter
   int buffersize = k+2;//for \n and \0
   char kmer_str[buffersize];
 
-  int i;
+  size_t i;
   for(i=0; i<*numOfCenters; i+=1){
       fgets(kmer_str, buffersize, fin);
       centers[i] = encode(kmer_str, k);
@@ -136,6 +137,47 @@ kmer* readCentersFromFile(const char* filename, const int k, size_t* numOfCenter
   fclose(fin);
   return centers;
 }
+
+int* readCliquesFromFile(const char* filename, const int k, kmer km1Mask,
+			 kmer*** centers, size_t* numOfCenters){
+    FILE* fin = fopen(filename, "r");
+
+    fscanf(fin, "%zu\n", numOfCenters);
+    int* sizes = malloc_harder(sizeof *sizes *(*numOfCenters));
+    kmer** c = malloc_harder(sizeof *c *(*numOfCenters));
+
+    size_t buffersize = k+2;//for \n (or ' ') and \0
+    char* kmer_str = malloc_harder(sizeof *kmer_str * buffersize);
+
+    size_t i, j, tmp;
+    int* cur;
+    for(i=0; i<*numOfCenters; i+=1){
+	cur = sizes+i;
+	fscanf(fin, "%d ", cur);
+	c[i] = malloc_harder(sizeof *(c[i]) *(*cur));
+	for(j=0; j<(*cur)-1; j+=1){
+	    tmp = getdelim(&kmer_str, &buffersize, ' ', fin);
+	    if(tmp == k){// (k-1)-mer + ' '
+		c[i][j] = encode(kmer_str, k-1) | km1Mask;
+	    }else{// k-mer
+		c[i][j] = encode(kmer_str, k);
+	    }
+	}
+	tmp = getline(&kmer_str, &buffersize, fin);
+	if(tmp == k){// (k-1)-mer + '\n'
+	    c[i][j] = encode(kmer_str, k-1) | km1Mask;
+	}else{// k-mer
+	    c[i][j] = encode(kmer_str, k);
+	}
+    }
+
+    free(kmer_str);
+    fclose(fin);
+
+    *centers = c;
+    return sizes;
+}
+
 
 void readKMerHashFromFile(const char* filename, const int k, int* h){
     FILE* fin = fopen(filename, "r");

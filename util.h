@@ -1,7 +1,7 @@
 /*
   Utility functions used by the k-mer partition project.
   By: Ke@PSU
-  Last edited: 10/18/2021
+  Last edited: 10/30/2021
 */
 
 #ifndef _UTIL_H
@@ -55,6 +55,18 @@ char* decode(const kmer enc, const int k, char* str);
   Use "make filename.MaxID" to convert Leran's output into this format.
 */
 kmer* readCentersFromFile(const char* filename, const int k, size_t* numOfCenters);
+
+/*
+  Read in a list of centers (k-mers cliques) from a file.
+  The first line of the file is the number of centers.
+  The following lines each contains a list of (string representations of) 
+  k-mers and (k-1)-mers.
+  Use "make clique{k}{d}.MaxID" to convert Leran's output into this format.
+  A (k-1)-mer x is stored as (x | km1Mask) to distinguish with k-mers.
+  Return an int array for the sizes of the cliques.
+*/
+int* readCliquesFromFile(const char* filename, const int k, kmer km1Mask,
+			  kmer*** centers, size_t* numOfCenters);
 
 /*
   Read in a list of hash value for k-mers from a file and update

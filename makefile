@@ -3,19 +3,24 @@ CFLAGS+= -m64 -g -Wall
 LDFLAGS= -L$$GUROBI_HOME/lib -lgurobi91
 LIBS=
 INC= $$GUROBI_HOME/include/
-ALLDEP:= util.o ArrayList.o HashTable.o #AVLTree.o
+ALLDEP:= $(patsubst %.h,%.o,$(wildcard *.h))
+ALLILP:= $(wildcard *_ILP.c)
 
 .PHONY: test
 
 test: $(ALLDEP) test.out partitionByLayers.out
 
 product: CFLAGS = -O3
-product: $(ALLDEP) partitionByLayers.out partitionByLayersCheckByCenters.out partitionByLayersCheckByCentersWithP1M1.out partitionByLayersCheckByNeighborsWithP1M1.out partitionByLayersCheckByNeighbors.out partitionByLayersCheckByNeighborsOnlyP1M1.out assignAll.out
+product: $(ALLDEP) $(patsubst %.c,%.out,$(filter-out $(patsubst %.o,%.c,$(ALLDEP)) $(ALLILP), $(wildcard *.c)))
 
 %.out: %.c $(ALLDEP)
 	$(CC) $(CFLAGS) -o $@ $^ $(LIBS)
 %.o: %.c makefile
 	$(CC) $(CFLAGS) -MMD -c $< -o $@
+
+clique%.MaxID: clique%.txt
+	grep -oE 'has [0-9]+' $^ | sed 's/has //' > $@; \
+	awk -F' ' 'NR>4 {if(NF){sub(/[ \t]+$$/, ""); print NF, $$0}else{exit}}' $^ >> $@
 
 %.MaxID: %.txt
 	grep -oE '[0-9]+' $^ | tail -1 > $@; \
