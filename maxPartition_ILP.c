@@ -248,17 +248,18 @@ QUIT:
     if(vtype) free(vtype);
     if(sol) free(sol);
 
+    /* Error reporting */
+    if (error) {
+	printf("ERROR: %d - %s\n", error, GRBgeterrormsg(env));
+	exit(1);
+    }
+
     /* Free model */
     GRBfreemodel(model);
 
     /* Free environment */
     GRBfreeenv(env);
     
-    /* Error reporting */
-    if (error) {
-	printf("ERROR: %d - %s\n", error, GRBgeterrormsg(env));
-	exit(1);
-    }
 
     return 0;
 }
