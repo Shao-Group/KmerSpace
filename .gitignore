@@ -6,3 +6,6 @@ test.c
 *.txt
 *.log*
 *.hash*
+*.lp
+*.result
+*_ILP
