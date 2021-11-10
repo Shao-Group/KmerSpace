@@ -1,7 +1,7 @@
 /*
   Utility functions used by the k-mer partition project.
   By: Ke@PSU
-  Last edited: 10/30/2021
+  Last edited: 11/10/2021
 */
 
 #ifndef _UTIL_H
@@ -83,5 +83,16 @@ void readKMerHashFromFile(const char* filename, const int k, int* h);
 void* malloc_harder(size_t size);
 void* calloc_harder(size_t num, size_t size);
 void* realloc_harder(void* ptr, size_t new_size);
+
+/*
+  Generate a random k-mer. User is responsible for seeding with srand().
+*/
+kmer randomKMer(int k);
+
+/*
+  Given a k-mer s, randomly generate a k-mer t with dist(s,t) = d. 
+  User is responsible for seeding with srand().
+*/
+kmer randomEdit(kmer s, int k, int d);
 
 #endif // util.h
