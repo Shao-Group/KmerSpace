@@ -55,6 +55,7 @@ int main(int argc, char* argv[]){
 	    if(h[s] == h[t]) match += 1;
 	}
 	printf("d=%d %.2f\n", d, match*100.0/TRIALS);
+	fflush(stdout);
     }
     
     free(h);

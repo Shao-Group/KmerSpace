@@ -279,9 +279,8 @@ static inline int randBase(int avoid){
 kmer randomEdit(kmer s, int k, int d){
     int done = 0;
     kmer t=s;
-
-    int numIndel = (rand()%((d>>1)+1))<<1;
-    int numSubst = d - numIndel;
+    
+    int numIndel, numSubst;
 
     int changed[k];
     int ops[k];
@@ -290,46 +289,61 @@ kmer randomEdit(kmer s, int k, int d){
     kmer head, tail, mask, new_body;
     
     while(!done){
-
-	for(i=0; i<k; i+=1){
-	    changed[i] = 0;
-	}
-	
-	//2*numIndel distinct positions
-	randSeq(numIndel, k, ops);
-	//after shuffling, treat ops as indices for (del, ins, del, ins, ...)
-	shuffleIntArray(numIndel, ops);
-	for(i=0; i<numIndel; i+=2){
-	    //deletion
-	    j = ops[i]<<1;
-	    head = (s>>(j+2))<<j;
-	    tail = ((1lu<<j)-1) & s;
-	    s = head|tail;
-	    //insertion
-	    j = ops[i+1];
-	    changed[j] = 1;
-	    j <<= 1;
-	    head = (s>>j)<<(j+2);
-	    tail = ((1lu<<j)-1) & s;
-	    new_body = (long unsigned) randBase(-1);
-	    s = head | (new_body<<j) | tail;	    
-	}
-	
-	//substitutions
-	for(i=0; i<numSubst; i+=1){
-	    do{
-		j = rand()%k;
-	    }while(changed[j]);
-	    changed[j] = 1;
+	if(k > d){
+	    for(i=0; i<k; i+=1){
+		changed[i] = 0;
+	    }
 	    
-	    j <<= 1;
-	    mask = 3lu<<j;
-	    body = (s & mask)>>j;
-	    new_body = (long unsigned) randBase(body);
-	    s = (s & ~mask) | (new_body << j);
-	}      
-	
+	    numIndel = (rand()%((d>>1)+1))<<1;
+	    numSubst = d - numIndel;
+	    
+	    //numIndel distinct positions
+	    randSeq(numIndel, k, ops);
+	    //after shuffling, treat ops as indices for
+	    //(del, ins, del, ins, ...)
+	    shuffleIntArray(numIndel, ops);
+	    for(i=0; i<numIndel; i+=2){
+		//deletion
+		j = ops[i]<<1;
+		head = (s>>(j+2))<<j;
+		tail = ((1lu<<j)-1) & s;
+		s = head|tail;
+		//insertion
+		j = ops[i+1];
+		changed[j] = 1;
+		j <<= 1;
+		head = (s>>j)<<(j+2);
+		tail = ((1lu<<j)-1) & s;
+		new_body = (long unsigned) randBase(-1);
+		s = head | (new_body<<j) | tail;	    
+	    }
+	    
+	    //substitutions
+	    for(i=0; i<numSubst; i+=1){
+		do{
+		    j = rand()%k;
+		}while(changed[j]);
+		changed[j] = 1;
+	    
+		j <<= 1;
+		mask = 3lu<<j;
+		body = (s & mask)>>j;
+		new_body = (long unsigned) randBase(body);
+		s = (s & ~mask) | (new_body << j);
+	    }
+	    
+	}else{//k==d, substitute all
+	    for(i=0; i<k; i+=1){
+		j = i << 1;
+		mask = 3lu<<j;
+		body = (s & mask)>>j;
+		new_body = (long unsigned) randBase(body);
+		s = (s & ~mask) | (new_body << j);		
+	    }
+	}
+
 	if(editDist2(s, k, t, k, -1) == d) done = 1;
+	else s = t; //restore and try again
     }
     return s;
 }
