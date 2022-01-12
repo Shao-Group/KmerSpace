@@ -21,13 +21,6 @@ VisitedArray::VisitedArray( unsigned long int s )
         aptrs[i] = (char *) calloc( sub_size, 1 );
     }
     size = s;
-
-    // Generate masks for the 8 bit offets
-    masks = (unsigned int *) malloc( 8 * sizeof(unsigned int) );
-    for (int i = 0; i < 8; ++i)
-    {
-        masks[i] = 1u << ( 7 - i );
-    }
 }
 
 /*
@@ -50,13 +43,6 @@ VisitedArray::VisitedArray( unsigned long int s, int ss )
         aptrs[i] = (char *) calloc( sub_size, 1 );
     }
     size = s;
-
-    // Generate masks for the 8 bit offets
-    masks = (unsigned int *) malloc( 8 * sizeof(unsigned int) );
-    for (int i = 0; i < 8; ++i)
-    {
-        masks[i] = 1u << ( 7 - i );
-    }
 }
 
 /*
@@ -69,11 +55,12 @@ VisitedArray::~VisitedArray()
         free( aptrs[i] );
     }
     free( aptrs );
-    free( masks );
 }
 
 /*
  * Overload [] operator to return the visited value indexed by sub
+ * 0 - unvisited
+ * 1 - visited
  *
  * sub: The index of the element to be extract
  */
@@ -88,8 +75,8 @@ bool VisitedArray::operator[]( const unsigned long int &sub )
     unsigned int temp;
     memcpy( &temp, &aptrs[bytePos/sub_size][bytePos%sub_size], 1 );
 
-    temp = temp & masks[offset];
-    return (temp == masks[offset]);
+    temp = temp & (1 << offset);
+    return ( temp == (1 << offset) );
 }
     
 /*
@@ -107,6 +94,6 @@ void VisitedArray::setVisit( const unsigned long int sub )
 
     unsigned int temp;
     memcpy( &temp, &aptrs[bytePos/sub_size][bytePos%sub_size], 1 );
-    temp = temp | masks[offset];
+    temp = temp | (1 << offset);
     memcpy( &aptrs[bytePos/sub_size][bytePos%sub_size], &temp, 1 );
 }
