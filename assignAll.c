@@ -45,9 +45,8 @@ static inline void setNeighborCenter(NeighborCenter* nc, size_t idx, int d){
 }
 
 /*
-  Generate all k-mer neighbors of s up to depth away, if any of them
-  is assigned a center other than c, return TRUE; otherwise return
-  FALSE.
+  Do bfs for r layers from the center c, add c to the center list of each
+  visited kmer.
 */
 void bfsNeighborsRadius(kmer c, int c_idx, int k, int r, ArrayList* h){
     HashTable visited;
@@ -244,7 +243,7 @@ int main(int argc, char* argv[]){
     free(centers);
     
     char output_filename[50];
-    sprintf(output_filename, "hl%d-%d-%.*s.hash", k, r, 4, centers_file);
+    sprintf(output_filename, "hl%d-%d-%s.hash", k, r, centers_file);
     FILE* fout = fopen(output_filename, "w");
 
     for(i=0; i<NUM_KMERS; i+=1){

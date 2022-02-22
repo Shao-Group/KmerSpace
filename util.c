@@ -347,3 +347,50 @@ kmer randomEdit(kmer s, int k, int d){
     }
     return s;
 }
+
+
+int isSubsequence(kmer x, int b, kmer s, int k){
+    int i=0, j=0;
+    int cur = x & 3, tmp;
+    while(i<b && j<k){
+	tmp = s & 3;
+	if(tmp == cur){
+	    i += 1;
+	    x >>= 2;
+	    cur = x & 3;
+	}
+	j += 1;
+	s >>= 2;
+    }
+
+    return i==b;
+}
+
+
+int isSubstring(kmer x, int l, kmer s, int k){
+    int i;
+    kmer mask = (1lu<<(l<<1))-1;
+    for(i=0; i<=k-l; i+=1){
+	if((s^x)&mask){
+	    s >>= 2;
+	}else{
+	    return 1;
+	}
+    }
+    return 0;
+}
+
+int isInSampleD1(kmer x, int k){
+    kmer mask = 3lu;
+    int cur_partition = x & mask;
+    int i = 1;
+    int cur_symbol;
+    while(i<k){
+	i+=1;
+	x >>= 2;
+	cur_symbol = x & mask;
+	if(cur_partition < cur_symbol) cur_partition += 4;
+	cur_partition -= cur_symbol;
+    }
+    return (cur_partition == 0);
+}
