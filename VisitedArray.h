@@ -2,11 +2,11 @@
 #define VISITEDARRAY_H
 
 /*
- * A class for the visited array used in search algorithms. The array is chopped into
- * subarrays to avoid failures of dynamic allocation.
+ * A class for the visited array used in search algorithms. The array is 
+ * chopped into subarrays to avoid failures of dynamic allocation.
  *
  * Author: Leran Ma (lkm5463@psu.edu)
- * Date:   9:15 PM, Tuesday, November 2, 2021
+ * Date:   9:47 PM, Tuesday, January 11, 2022
  */
 class VisitedArray
 {
@@ -15,7 +15,6 @@ private:
     unsigned long int size;     // The capacity of the whole array in elements
     unsigned long int num_subs; // Number of subarrays
     unsigned long int sub_size; // Size of a subarray in bytes
-    unsigned int *masks;        // Masks used for easier calculation
 
 public:
     /*
@@ -40,6 +39,8 @@ public:
 
     /*
      * Overload [] operator to return the visited value indexed by sub
+     * 0 - unvisited
+     * 1 - visited
      *
      * sub: The index of the element to be extract
      */
