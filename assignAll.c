@@ -1,8 +1,16 @@
 /*
   Given a list of centers C={c_1, c_2, ..., c_m} in the k-mer space S, and 
-  a fixed radius r, we assign to each k-mer s a list of weighted centers 
+  a fixed radius r, 
+  
+  ********Deprecated****************************************************
+  we assign to each k-mer s a list of weighted centers 
   L_s={(c_{si}, w_{si})} such that for each i, dist(s, c_{si}) <= r and
   sum(w_{si) = 1.
+  **********************************************************************
+
+  we assign to each k-mer s a list of centers L_s={c_{si}} within radius
+  r of s. L_s is sorted in ascending order of dist(s, c_{si}) and c_{si}
+  (for centers with the same distance).
 
   If C is a maximal independent set of the k-mer space with parameter d 
   (i.e., dist(c_i, c_j) > d and for each k-mer s in S, there exists a 
@@ -10,7 +18,7 @@
   is guaranteed to be assigned a non-empty list.
  
   By: Ke@PSU
-  Last edited: 10/23/2021
+  Last edited: 11/09/2021
 */
 
 #include "util.h"
@@ -37,9 +45,8 @@ static inline void setNeighborCenter(NeighborCenter* nc, size_t idx, int d){
 }
 
 /*
-  Generate all k-mer neighbors of s up to depth away, if any of them
-  is assigned a center other than c, return TRUE; otherwise return
-  FALSE.
+  Do bfs for r layers from the center c, add c to the center list of each
+  visited kmer.
 */
 void bfsNeighborsRadius(kmer c, int c_idx, int k, int r, ArrayList* h){
     HashTable visited;
@@ -134,7 +141,11 @@ void bfsNeighborsRadius(kmer c, int c_idx, int k, int r, ArrayList* h){
 }//end bfsNeighborsRadius
 
 int cmpNeighborCenterByDistAsc(const void* c1, const void* c2){
-    return (*(NeighborCenter**) c1)->dist - (*(NeighborCenter**) c2)->dist;
+    NeighborCenter* a = *(NeighborCenter**) c1;
+    NeighborCenter* b = *(NeighborCenter**) c2;
+    int dist = a->dist - b->dist;
+    if(dist != 0) return dist;
+    else return (a->center_idx > b->center_idx ? 1 : -1);
 }
 
 //this version does not work well for Jaccard Similarity, will output raw dist instead
@@ -232,7 +243,7 @@ int main(int argc, char* argv[]){
     free(centers);
     
     char output_filename[50];
-    sprintf(output_filename, "hl%d-%d-%.*s.hash", k, r, 4, centers_file);
+    sprintf(output_filename, "hl%d-%d-%s.hash", k, r, centers_file);
     FILE* fout = fopen(output_filename, "w");
 
     for(i=0; i<NUM_KMERS; i+=1){

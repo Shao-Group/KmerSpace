@@ -214,3 +214,183 @@ void* realloc_harder(void* ptr, size_t new_size){
     }
     return new_ptr;
 }
+
+kmer randomKMer(int k){
+    k <<= 1;
+
+    kmer mask = (1lu<<k)-1;
+    int rand_digits = 10;
+    int rand_max = 1<<rand_digits;
+    int parts = k/rand_digits + 1;
+    
+    kmer s=0lu, cur;
+    int i;
+    for(i=0; i<parts; i+=1){
+	cur = rand()%rand_max;
+	s = (s<<rand_digits)|cur;
+    }
+    return s&mask;
+}
+
+//generate a sequence of n distinct random integers from 0 to max-1
+//seq is assumed to have at least n spaces
+//user is responsible for seeding
+static inline void randSeq(int n, int max, int* seq){
+    int i, j, m;
+    int cur;
+    seq[0] = rand()%max;
+    for(i=1; i<n; i+=1){
+	max -= 1;
+	cur = rand()%max;
+	for(j=0; j<i; j+=1){
+	    if(cur>=seq[j]) cur+=1;
+	    else{//insert at this position to remain sorted
+		for(m=i-1; m>=j; m-=1){
+		    seq[m+1] = seq[m];
+		}
+		break;
+	    }
+	}
+	seq[j] = cur;
+    }
+}
+
+static inline void shuffleIntArray(int n, int* seq){
+    int i, j, tmp;
+    for(i=n-1; i>=1; i-=1){
+	j = rand()%(i+1);
+	tmp = seq[i];
+	seq[i] = seq[j];
+	seq[j] = tmp;
+    }
+}
+
+//00b-A 01b-C 10b-G 11b-T
+static inline int randBase(int avoid){
+    int n = 4;
+    if(avoid >= 0){
+	n -= 1;
+    }
+    int r = rand()%n;
+    if(avoid >= 0 && r>=avoid) r+=1;
+    return r;
+}
+
+kmer randomEdit(kmer s, int k, int d){
+    int done = 0;
+    kmer t=s;
+    
+    int numIndel, numSubst;
+
+    int changed[k];
+    int ops[k];
+    
+    int i, j, body;
+    kmer head, tail, mask, new_body;
+    
+    while(!done){
+	if(k > d){
+	    for(i=0; i<k; i+=1){
+		changed[i] = 0;
+	    }
+	    
+	    numIndel = (rand()%((d>>1)+1))<<1;
+	    numSubst = d - numIndel;
+	    
+	    //numIndel distinct positions
+	    randSeq(numIndel, k, ops);
+	    //after shuffling, treat ops as indices for
+	    //(del, ins, del, ins, ...)
+	    shuffleIntArray(numIndel, ops);
+	    for(i=0; i<numIndel; i+=2){
+		//deletion
+		j = ops[i]<<1;
+		head = (s>>(j+2))<<j;
+		tail = ((1lu<<j)-1) & s;
+		s = head|tail;
+		//insertion
+		j = ops[i+1];
+		changed[j] = 1;
+		j <<= 1;
+		head = (s>>j)<<(j+2);
+		tail = ((1lu<<j)-1) & s;
+		new_body = (long unsigned) randBase(-1);
+		s = head | (new_body<<j) | tail;	    
+	    }
+	    
+	    //substitutions
+	    for(i=0; i<numSubst; i+=1){
+		do{
+		    j = rand()%k;
+		}while(changed[j]);
+		changed[j] = 1;
+	    
+		j <<= 1;
+		mask = 3lu<<j;
+		body = (s & mask)>>j;
+		new_body = (long unsigned) randBase(body);
+		s = (s & ~mask) | (new_body << j);
+	    }
+	    
+	}else{//k==d, substitute all
+	    for(i=0; i<k; i+=1){
+		j = i << 1;
+		mask = 3lu<<j;
+		body = (s & mask)>>j;
+		new_body = (long unsigned) randBase(body);
+		s = (s & ~mask) | (new_body << j);		
+	    }
+	}
+
+	if(editDist2(s, k, t, k, -1) == d) done = 1;
+	else s = t; //restore and try again
+    }
+    return s;
+}
+
+
+int isSubsequence(kmer x, int b, kmer s, int k){
+    int i=0, j=0;
+    int cur = x & 3, tmp;
+    while(i<b && j<k){
+	tmp = s & 3;
+	if(tmp == cur){
+	    i += 1;
+	    x >>= 2;
+	    cur = x & 3;
+	}
+	j += 1;
+	s >>= 2;
+    }
+
+    return i==b;
+}
+
+
+int isSubstring(kmer x, int l, kmer s, int k){
+    int i;
+    kmer mask = (1lu<<(l<<1))-1;
+    for(i=0; i<=k-l; i+=1){
+	if((s^x)&mask){
+	    s >>= 2;
+	}else{
+	    return 1;
+	}
+    }
+    return 0;
+}
+
+int isInSampleD1(kmer x, int k){
+    kmer mask = 3lu;
+    int cur_partition = x & mask;
+    int i = 1;
+    int cur_symbol;
+    while(i<k){
+	i+=1;
+	x >>= 2;
+	cur_symbol = x & mask;
+	if(cur_partition < cur_symbol) cur_partition += 4;
+	cur_partition -= cur_symbol;
+    }
+    return (cur_partition == 0);
+}
