@@ -49,7 +49,8 @@ void printKmer( unsigned long int enc, int k )
  * k : The length of the two k-mers
  * d : The maximum edit distance allowed
  */
-int editDist( const unsigned long int s1, const unsigned long int s2, const int k, const int d )
+int editDist( const unsigned long int s1, const unsigned long int s2, 
+              const int k, const int d )
 {
     int DPtable[k + 1][k + 1];
     for (int i = 0; i < k + 1; ++i)
@@ -121,8 +122,10 @@ void reportPerformance()
     space_stream.close();
 
     cerr << "Performance Report\n"
-         << "Time in user mode:        " << utime / sysconf(_SC_CLK_TCK) << " sec\n"
-         << "Time in kernel mode:      " << stime / sysconf(_SC_CLK_TCK) << " sec\n"
+         << "Time in user mode:        " 
+         << utime / sysconf(_SC_CLK_TCK) << " sec\n"
+         << "Time in kernel mode:      " 
+         << stime / sysconf(_SC_CLK_TCK) << " sec\n"
          << "Peak virtual memory size: " << vmpeak << " kB\n"
          << "Peak resident set size:   " << vmhwm << " kB\n\n";
 }
@@ -160,6 +163,174 @@ void doPairwiseCmp( const int k, const int d )
         printKmer( i, k );
         cerr << ' ';
         MIS.push_back( i );
+    }
+
+    cerr << "\nThe graph has an independent set of size " << MIS.size() 
+         << ".\n\n";
+    reportPerformance();
+}
+
+/*
+ * A data structure to store the mapping information for kmers. The array is 
+ * chopped into subarrays to avoid failures of dynamic allocation.
+ */
+class MappingArray
+{
+private:
+    char **aptrs;               // An array of pointers to subarrays
+    unsigned long int size;     // The capacity of the whole array in elements
+    unsigned long int num_subs; // Number of subarrays
+    unsigned long int sub_size; // Size of a subarray in bytes
+
+public:
+    /*
+     * Constructor
+     *
+     * s: capacity of the array
+     */
+    MappingArray( unsigned long int s )
+    {
+        sub_size = 1ul << 30;
+        num_subs = s * 8 / sub_size; // Each element occupies 8 bytes.
+        if ( (s * 8) % sub_size != 0 )
+        {
+            num_subs++;
+        }
+        aptrs = (char **) calloc( num_subs, sizeof(char *) );
+        for (int i = 0; i < num_subs; ++i)
+        {
+            aptrs[i] = (char *) calloc( sub_size, 1 );
+        }
+        size = s;
+    }
+
+    /*
+     * Destructor
+     */
+    ~MappingArray()
+    {
+        for (int i = 0; i < num_subs; ++i)
+        {
+            free( aptrs[i] );
+        }
+        free( aptrs );
+    }
+
+    /*
+     * Overload [] operator to return the mapping of the kmer indexed by sub
+     *
+     * sub: The index of the element to be extract
+     */
+    unsigned long int operator[]( const unsigned long int &sub )
+    {
+        // Find the byte position where the required element is located
+        // Use modulo to avoid index out of range
+        unsigned long int bytePos = (sub % size) * 8;
+
+        unsigned long int m = 0;
+        memcpy( &m, &aptrs[bytePos/sub_size][bytePos%sub_size], 8);
+        return m;
+    }
+    
+    /*
+     * Set the mapping for an element indexed by sub
+     *
+     * sub: The index of the element
+     * m  : The mapping of the element
+     */
+    void setMap( const unsigned long int sub, unsigned long int m )
+    {
+        unsigned long int bytePos = (sub % size) * 8;
+        memcpy( &aptrs[bytePos/sub_size][bytePos%sub_size], &m, 8);
+    }
+};
+
+/*
+ * Asks neighbors for possible mapping. Returns true if a feasible answer is 
+ * found.
+ *
+ * enc    : The binary encoding of the k-mer
+ * k      : The length of the k-mer
+ * d      : The maximum edit distance allowed
+ * mapping: The mapping array
+ */
+bool askNeighbors( const unsigned long int enc, const int k, const int d, 
+                   MappingArray &mapping )
+{
+    // A set to store asked neighbors
+    unordered_set<unsigned long int> asked;
+
+    // A set to store checked possibilities
+    unordered_set<unsigned long int> checked;
+
+    for ( int j = 1; j <= k; ++j )
+    {
+        unsigned long int head = (enc >> (2 * j)) << (2 * j);
+        unsigned long int tail = (enc << 1 << (63 - 2 * (j - 1))) >> 
+                                 (63 - 2 * (j - 1)) >> 1;
+        for ( unsigned long int l = 0; l < 4; ++l )
+        {
+            unsigned long int body = l << (2 * (j - 1));
+            unsigned long int node = head + body + tail;
+            if ( asked.emplace(node).second )
+            {
+                unsigned long int temp = mapping[node];
+                if ( checked.emplace(temp).second && 
+                     editDist(temp, enc, k, d) <= d )
+                {
+                    mapping.setMap(enc, temp);
+                    return true;
+                }
+            }
+        }
+    }
+    return false;
+}
+
+/*
+ * Implementation of the heuristic method
+ *
+ * k: The length of the k-mer
+ * d: The maximum edit distance allowed
+ */
+void doHeuristic( const int k, const int d )
+{
+    unsigned long int kmerSpaceSize = 1ul << (2 * k);
+    vector<unsigned long int> MIS;
+    MIS.push_back( 0 );
+    MappingArray mapping(kmerSpaceSize / 4);
+
+    cerr << "\nList of independent nodes: " << endl;
+    printKmer( 0, k );
+    cerr << ' ';
+    bool isCovered = false;
+
+    for (unsigned long int i = 1; i < kmerSpaceSize; ++i)
+    {
+        if ( askNeighbors(i, k, d, mapping) )
+        {
+            continue;
+        }
+
+        for ( const unsigned long int &j : MIS )
+        {
+            if ( editDist(i, j, k, d) <= d )
+            {
+                mapping.setMap(i, j);
+                isCovered = true;
+                break;
+            }
+        }
+        if ( isCovered )
+        {
+            isCovered = false;
+            continue;
+        }
+
+        printKmer( i, k );
+        cerr << ' ';
+        MIS.push_back( i );
+        mapping.setMap( i, i );
     }
 
     cerr << "\nThe graph has an independent set of size " << MIS.size() 
@@ -332,89 +503,6 @@ void doPairwiseCmp( const int k, const int d )
 // };
 
 // /*
-//  * A data structure to store the coveage information for kmers. The array is chopped into
-//  * subarrays to avoid failures of dynamic allocation.
-//  */
-// class CoverageArray
-// {
-// private:
-//     char **aptrs;               // An array of pointers to subarrays
-//     unsigned long int size;     // The capacity of the whole array in elements
-//     unsigned long int num_subs; // Number of subarrays
-//     unsigned long int sub_size; // Size of a subarray in bytes
-
-// public:
-//     /*
-//      * Constructor
-//      *
-//      * s    : capacity of the array
-//      * value: the default value of an element
-//      */
-//     CoverageArray( unsigned long int s, unsigned long int value )
-//     {
-//         sub_size = 1;
-//         sub_size = sub_size << 30;
-//         num_subs = s * 5 / sub_size; // Each element occupies 5 bytes.
-//         if ( (s * 5) % sub_size != 0 )
-//         {
-//             num_subs++;
-//         }
-//         aptrs = (char **) calloc( num_subs, sizeof(char *) );
-//         for (int i = 0; i < num_subs; ++i)
-//         {
-//             // Add a few extra bytes to the end of each subarray to avoid potential out
-//             // of range access
-//             aptrs[i] = (char *) malloc( sub_size + 5 );
-//             for (unsigned long int j = 0; j < sub_size; j += 5)
-//             {
-//                 memcpy( &aptrs[i][j], &value, 5);
-//             }
-//         }
-//         size = s;
-//     }
-
-//     /*
-//      * Destructor
-//      */
-//     ~CoverageArray()
-//     {
-//         for (int i = 0; i < num_subs; ++i)
-//         {
-//             free( aptrs[i] );
-//         }
-//         free( aptrs );
-//     }
-
-//     /*
-//      * Overload [] operator to return the coverage of the kmer indexed by sub
-//      *
-//      * sub: The index of the element to be extract
-//      */
-//     unsigned long int operator[]( const unsigned long int &sub )
-//     {
-//         // Find the byte position where the required element is located
-//         // Use modulo to avoid index out of range
-//         unsigned long int bytePos = (sub % size) * 5;
-
-//         unsigned long int cov = 0;
-//         memcpy( &cov, &aptrs[bytePos/sub_size][bytePos%sub_size], 5);
-//         return cov;
-//     }
-    
-//     /*
-//      * Set the coverage for an element indexed by sub
-//      *
-//      * sub: The index of the element
-//      * cov: The coverage of the element
-//      */
-//     void setCov( const unsigned long int sub, unsigned long int cov )
-//     {
-//         unsigned long int bytePos = (sub % size) * 5;
-//         memcpy( &aptrs[bytePos/sub_size][bytePos%sub_size], &cov, 5);
-//     }
-// };
-
-// /*
 //  * Gets neighbors of a vertex
 //  *
 //  * enc: The binary encoding of the k-mer
@@ -495,40 +583,6 @@ void doPairwiseCmp( const int k, const int d )
 //             n.emplace( (node << 2) | 1 );
 //         }
 //     }
-// }
-
-// /*
-//  * Asks neighbors for possible coverage. Returns true if a feasible answer is found.
-//  *
-//  * enc     : The binary encoding of the k-mer
-//  * k       : The length of the k-mer
-//  * d       : The maximum edit distance allowed
-//  * coverage: The coverage array
-//  */
-// bool askNeighbors( const unsigned long int enc, const int k, const int d, CoverageArray &coverage )
-// {
-//     unordered_set<unsigned long int> asked;   // A set to store asked neighbors
-//     unordered_set<unsigned long int> checked; // A set to store checked possibilities
-//     for ( int j = 1; j <= k; ++j )
-//     {
-//         unsigned long int head = (enc >> (2 * j)) << (2 * j);
-//         unsigned long int tail = (enc << 1 << (63 - 2 * (j - 1))) >> (63 - 2 * (j - 1)) >> 1;
-//         for ( unsigned long int l = 0; l < 4; ++l )
-//         {
-//             unsigned long int body = l << (2 * (j - 1));
-//             unsigned long int node = head + body + tail;
-//             if ( asked.emplace(node).second )
-//             {
-//                 unsigned long int temp = coverage[node];
-//                 if ( checked.emplace(temp).second && editDist(temp, enc, k, d) <= d )
-//                 {
-//                     coverage.setCov(enc, temp);
-//                     return true;
-//                 }
-//             }
-//         }
-//     }
-//     return false;
 // }
 
 // /*
@@ -671,60 +725,6 @@ void doPairwiseCmp( const int k, const int d )
 //     reportPerformance();
 // }
 
-// /*
-//  * Implementation of the nearest neighbor consultant method
-//  *
-//  * k: The length of the k-mer
-//  * d: The maximum edit distance allowed
-//  */
-// void doNNC( const int k, const int d )
-// {
-//     unsigned long int kmerSpaceSize = 1;
-//     kmerSpaceSize = kmerSpaceSize << (2 * k);
-//     KmerSpace kmerSpace( kmerSpaceSize );
-//     kmerSpace.shuffle();
-
-//     unsigned long int i = kmerSpace.next();
-//     vector<unsigned long int> MIS;
-//     MIS.push_back( i );
-//     CoverageArray coverage(kmerSpaceSize / 4, i);
-//     cerr << "\nList of independent nodes: " << endl;
-//     printKmer( i << 2, k );
-//     cerr << ' ';
-//     bool isCovered = false;
-
-//     while ( !kmerSpace.empty() )
-//     {
-//         i = kmerSpace.next();
-//         if ( askNeighbors(i, k, d, coverage) )
-//         {
-//             continue;
-//         }
-
-//         for ( const unsigned long int &j : MIS )
-//         {
-//             if ( editDist(i, j, k, d) <= d )
-//             {
-//                 coverage.setCov(i, j);
-//                 isCovered = true;
-//                 break;
-//             }
-//         }
-//         if ( isCovered )
-//         {
-//             isCovered = false;
-//             continue;
-//         }
-//         printKmer( i << 2, k );
-//         cerr << ' ';
-//         MIS.push_back( i );
-//         coverage.setCov( i, i );
-//     }
-
-//     cerr << "\nThe graph has an independent set of size " << MIS.size() << ".\n\n";
-//     reportPerformance();
-// }
-
 int main()
 {
     cerr << "This program is used to find a MIS in a k-mer space. Valid inputs"
@@ -749,10 +749,10 @@ int main()
     {
         doPairwiseCmp( k, d );
     }
-    // else if ( method == 2 )
-    // {
-    //     doHeuristic( k, d );
-    // }
+    else if ( method == 2 )
+    {
+        doHeuristic( k, d );
+    }
     // else if ( method == 3 )
     // {
     //     doBFS( k, d );
