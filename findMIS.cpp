@@ -297,7 +297,16 @@ void doHeuristic( const int k, const int d )
 {
     unsigned long int kmerSpaceSize = 1ul << (2 * k);
     vector<unsigned long int> MIS;
+    vector<int> da;
+    vector<int> dc;
+    vector<int> dg;
+    vector<int> dt;
+
     MIS.push_back( 0 );
+    da.push_back( 0 );
+    dc.push_back( k );
+    dg.push_back( k );
+    dt.push_back( k );
     MappingArray mapping(kmerSpaceSize / 4);
 
     cerr << "\nList of independent nodes: " << endl;
@@ -312,15 +321,35 @@ void doHeuristic( const int k, const int d )
             continue;
         }
 
-        for ( const unsigned long int &j : MIS )
+        int ds[] = {k, k, k, k};
+        unsigned long int temp_v = i;
+        for (int j = 0; j < k; ++j)
         {
-            if ( editDist(i, j, k, d) <= d )
+            ds[temp_v & 3]--;
+            temp_v = temp_v >> 2;
+        }
+
+        for (unsigned long int j = 0; j < MIS.size(); ++j)
+        {
+            if ( abs(da[j] - ds[0]) > d ||
+                 abs(dc[j] - ds[1]) > d ||
+                 abs(dg[j] - ds[2]) > d ||
+                 abs(dt[j] - ds[3]) > d )
             {
-                mapping.setMap(i, j);
+                continue;
+            }
+            if ( da[j] + ds[0] <= d ||
+                 dc[j] + ds[1] <= d ||
+                 dg[j] + ds[2] <= d ||
+                 dt[j] + ds[3] <= d ||
+                 editDist(i, MIS[j], k, d) <= d)
+            {
+                mapping.setMap(i, MIS[j]);
                 isCovered = true;
                 break;
             }
         }
+
         if ( isCovered )
         {
             isCovered = false;
@@ -330,6 +359,10 @@ void doHeuristic( const int k, const int d )
         printKmer( i, k );
         cerr << ' ';
         MIS.push_back( i );
+        da.push_back( ds[0] );
+        dc.push_back( ds[1] );
+        dg.push_back( ds[2] );
+        dt.push_back( ds[3] );
         mapping.setMap( i, i );
     }
 
@@ -337,67 +370,6 @@ void doHeuristic( const int k, const int d )
          << ".\n\n";
     reportPerformance();
 }
-
-// class KmerSpace
-// {
-// private:
-//     char *K;                // The pointer to the kmer space
-//     char *head;             // The head pointer
-//     char *tail;             // The tail pointer
-//     unsigned long int size; // The size of the kmer space in elements
-
-// public:
-//     /*
-//      * Constructor
-//      *
-//      * s: the number of kmers in the space
-//      */
-//     KmerSpace( const unsigned long int s )
-//     {
-//         K = (char *) malloc( s * 5 );
-//         for (unsigned long int i = 0; i < s; ++i)
-//         {
-//             memcpy( K + i * 5, &i, 5 );
-//         }
-
-//         head = K - 5;
-//         tail = K + s * 5;
-//         size = s;
-//     }
-
-//     /*
-//      * Destructor
-//      */
-//     ~KmerSpace()
-//     {
-//         free( K );
-//     }
-
-//     unsigned long int next()
-//     {
-//         head += 5;
-//         unsigned long int temp = 0;
-//         memcpy( &temp, head, 5 );
-//         return temp;
-//     }
-
-//     bool empty()
-//     {
-//         return (head == tail);
-//     }
-
-//     void shuffle()
-//     {
-//         for ( unsigned long int i = size - 1; i >= 1; --i )
-//         {
-//             unsigned long int j = rand() % (i + 1);
-//             unsigned long int temp = 0;
-//             memcpy( &temp, K + j*5, 5 );
-//             memcpy( K + j*5, K + i*5, 5 );
-//             memcpy( K + i*5, &temp, 5 );
-//         }
-//     }
-// };
 
 // /*
 //  * A class for the dist array used in BFS. The array is chopped into subarrays to avoid
