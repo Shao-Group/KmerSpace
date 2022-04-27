@@ -164,17 +164,17 @@ QUIT:
     free(obj);
     free(vtype);
 
-    /* Free model */
-    GRBfreemodel(model);
-
-    /* Free environment */
-    GRBfreeenv(env);
-    
     /* Error reporting */
     if (error) {
 	printf("ERROR: %s\n", GRBgeterrormsg(env));
 	exit(1);
     }
+
+    /* Free model */
+    GRBfreemodel(model);
+
+    /* Free environment */
+    GRBfreeenv(env);
 
     return 0;
 }
