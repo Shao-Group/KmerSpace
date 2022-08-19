@@ -1,9 +1,9 @@
 /*
- * This program is the source code for the honors thesis "Maximal Independent 
- * Sets of a K-mer Space".
+ * This program is the source code for the paper "On the Maximal Independent
+ * Sets of Strings with Edit Distance".
  *
  * Author: Leran Ma (lkm5463@psu.edu)
- * Date:   5:06 PM, Monday, March 29, 2022
+ * Date:   5:07 PM, Friday, August 19, 2022
  */
 
 #include <iostream>
@@ -130,12 +130,119 @@ void reportPerformance()
 }
 
 /*
- * Implementation of the Simple Pairwise Comparison method
+ * Implementation of the Simple Pairwise Comparison method with alphabetical
+ * order of k-mer iteration
  *
  * k: The length of the k-mer
  * d: The maximum edit distance allowed
  */
 void doPairwiseCmp( const int k, const int d )
+{
+    unsigned long int kmerSpaceSize = 1ul << (2 * k);
+    vector<unsigned long int> MIS;
+    bool isCovered = false;
+    
+    cerr << "\nList of independent nodes: " << endl;
+    for ( unsigned long int i = 0; i < kmerSpaceSize; ++i )
+    {
+        for ( const unsigned long int &j : MIS )
+        {
+            if ( editDist(i, j, k, d) <= d )
+            {
+                isCovered = true;
+                break;
+            }
+        }
+
+        if ( isCovered )
+        {
+            isCovered = false;
+            continue;
+        }
+
+        printKmer( i, k );
+        cerr << ' ';
+        MIS.push_back( i );
+    }
+
+    cerr << "\nThe graph has an independent set of size " << MIS.size() 
+         << ".\n\n";
+    reportPerformance();
+}
+
+/*
+ * A class for the visited array used to mark if a k-mer has been visited
+ */
+class VisitedArray
+{
+private:
+    char *aptr;             // Array pointer
+    unsigned long int size; // The capacity of the whole array in elements
+
+public:
+    /*
+     * Constructor
+     *
+     * s: total number of elements
+     */
+    VisitedArray( unsigned long int s )
+    {
+        aptr = (char *) calloc( s/8, 1 ); // Each element occupies 1 bit.
+        size = s;
+    }
+
+    /*
+     * Destructor
+     */
+    ~VisitedArray()
+    {
+        free( aptr );
+    }
+
+    /*
+     * Overload [] operator to return the value indexed by sub
+     *
+     * sub: The index of the element to be extract
+     */
+    unsigned int operator[]( const unsigned long int &sub )
+    {
+        // Find the bit offset
+        int offset = sub % 8;
+
+        // Find the byte in which the required element is located
+        unsigned long int bytePos = sub / 8;
+
+        unsigned int visited;
+        memcpy( &visited, &aptr[bytePos], 1 );
+        return ( (visited >> (7 - offset)) & 1 );
+    }
+    
+    /*
+     * Set the element indexed by sub to be visited
+     *
+     * sub : The index of the element
+     */
+    void setVisited( const unsigned long int sub )
+    {
+        // Find the bit offset
+        int offset = sub % 8;
+
+        // Find the byte in which the required element is located
+        unsigned long int bytePos = sub / 8;
+
+        unsigned int visited = 1u << (7 - offset);
+        aptr[bytePos] = aptr[bytePos] | visited;
+    }
+};
+
+/*
+ * Implementation of the Simple Pairwise Comparison method with random order of
+ * k-mer iteration
+ *
+ * k: The length of the k-mer
+ * d: The maximum edit distance allowed
+ */
+void doRandPairwiseCmp( const int k, const int d )
 {
     unsigned long int kmerSpaceSize = 1ul << (2 * k);
     vector<unsigned long int> MIS;
@@ -287,7 +394,8 @@ bool askNeighbors( const unsigned long int enc, const int k, const int d,
 }
 
 /*
- * Implementation of the heuristic method
+ * Implementation of the heuristic method with alphabetical order of k-mer
+ * iteration
  *
  * k: The length of the k-mer
  * d: The maximum edit distance allowed
@@ -535,7 +643,7 @@ void getNeighbor( unsigned long int enc, int k,
 }
 
 /*
- * Implementation of the BFS method
+ * Implementation of the BFS method with alphabetical order of k-mer iteration
  *
  * k: The length of the k-mer
  * d: The maximum edit distance allowed
@@ -652,28 +760,53 @@ int main()
     int k;
     int d;
     int method;
+    int random;
     cerr << "Please enter k: ";
     cin >> k;
     cerr << k << endl;
     cerr << "Plesae enter d: ";
     cin >> d;
     cerr << d << endl;
-    cerr << "Choose an approach. Please enter 1 for Simple Pairwise Comparison"
+    cerr << "Please choose an approach. Enter 1 for Simple Pairwise Comparison"
          << ", 2 for Heuristic Pairwise Comparison, or 3 for BFS: ";
     cin >> method;
     cerr << method << endl;
+    cerr << "The iteration order of k-mers affects the resulting MIS size and "
+         << "the performance of the program.\n"
+         << "Please choose the iteration order of k-mers. Enter 1 for random "
+         << "order or 2 for alphabetical order: ";
+    cin >> random;
+    cerr << random << endl;
 
-    if ( method == 1 )
+    if ( random == 2 )
     {
-        doPairwiseCmp( k, d );
+        if ( method == 1 )
+        {
+            doPairwiseCmp( k, d );
+        }
+        else if ( method == 2 )
+        {
+            doHeuristic( k, d );
+        }
+        else if ( method == 3 )
+        {
+            doBFS( k, d );
+        }
     }
-    else if ( method == 2 )
+    else if ( random == 1 )
     {
-        doHeuristic( k, d );
-    }
-    else if ( method == 3 )
-    {
-        doBFS( k, d );
+        if ( method == 1 )
+        {
+            doRandPairwiseCmp( k, d );
+        }
+        else if ( method == 2 )
+        {
+            doRandHeuristic( k, d );
+        }
+        else if ( method == 3 )
+        {
+            doRandBFS( k, d );
+        }
     }
     return 0;
 }
