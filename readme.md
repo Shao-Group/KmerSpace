@@ -2,8 +2,7 @@
 
 This repository provides source code that implements three algorithms
 to find a maximal independent set of all kmers (all strings of fixed length k)
-under the edit distance.  
-Formally, let S be the set of all kmers over alphabet {A, C, G, T}.
+under the edit distance.  Formally, let S be the set of all kmers over alphabet {A, C, G, T}.
 Given a parameter d, d < k, a subset M of S is defined as an independent set of S
 parameterized by d if the edit distance between any two kmers in M is larger than d.
 An independent set M of S is defined to be maximal (i.e. an MIS) if there does not exist
