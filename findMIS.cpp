@@ -1,9 +1,9 @@
 /*
- * This program is the source code for the paper "On the Maximal Independent
- * Sets of Strings with Edit Distance".
+ * This program is the source code for the paper "On the Maximal Independent 
+ * Sets of k-mers with the Edit Distance".
  *
  * Author: Leran Ma (lkm5463@psu.edu)
- * Date:   5:07 PM, Friday, August 19, 2022
+ * Date:   8:33 PM, Sunday, August 21, 2022
  */
 
 #include <iostream>
@@ -1038,8 +1038,9 @@ int main()
     cerr << "Plesae enter d: ";
     cin >> d;
     cerr << d << endl;
-    cerr << "Please choose an approach. Enter 1 for Simple Pairwise Comparison"
-         << ", 2 for Heuristic Pairwise Comparison, or 3 for BFS: ";
+    cerr << "Please choose an approach. Notice that the BFS approach does not " 
+         << "support d>5. Enter 1 for Simple Greedy, 2 for Improved Greedy, "
+         << "or 3 for BFS: ";
     cin >> method;
     cerr << method << endl;
     cerr << "The iteration order of k-mers affects the resulting MIS size and "
