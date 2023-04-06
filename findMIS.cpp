@@ -1,14 +1,15 @@
 /*
- * This program is the source code for the honors thesis "Maximal Independent 
- * Sets of a K-mer Space".
+ * This program is the source code for the paper "On the Maximal Independent 
+ * Sets of k-mers with the Edit Distance".
  *
  * Author: Leran Ma (lkm5463@psu.edu)
- * Date:   5:06 PM, Monday, March 29, 2022
+ * Date:   8:33 PM, Sunday, August 21, 2022
  */
 
 #include <iostream>
 #include <cstdlib>
 #include <cstring>
+#include <ctime>
 #include <unordered_set>
 #include <unordered_map>
 #include <vector>
@@ -130,7 +131,8 @@ void reportPerformance()
 }
 
 /*
- * Implementation of the Simple Pairwise Comparison method
+ * Implementation of the Simple Pairwise Comparison method with alphabetical
+ * order of k-mer iteration
  *
  * k: The length of the k-mer
  * d: The maximum edit distance allowed
@@ -162,6 +164,137 @@ void doPairwiseCmp( const int k, const int d )
         printKmer( i, k );
         cerr << ' ';
         MIS.push_back( i );
+    }
+
+    cerr << "\nThe graph has an independent set of size " << MIS.size() 
+         << ".\n\n";
+    reportPerformance();
+}
+
+/*
+ * A class for the visited array used to mark if a k-mer has been visited
+ */
+class VisitedArray
+{
+private:
+    char *aptr;             // Array pointer
+    unsigned long int size; // The capacity of the whole array in elements
+
+public:
+    /*
+     * Constructor
+     *
+     * s: total number of elements
+     */
+    VisitedArray( unsigned long int s )
+    {
+        aptr = (char *) calloc( s/8, 1 ); // Each element occupies 1 bit.
+        size = s;
+    }
+
+    /*
+     * Destructor
+     */
+    ~VisitedArray()
+    {
+        free( aptr );
+    }
+
+    /*
+     * Overload [] operator to return the value indexed by sub
+     *
+     * sub: The index of the element to be extract
+     */
+    unsigned int operator[]( const unsigned long int &sub )
+    {
+        // Find the bit offset
+        int offset = sub % 8;
+
+        // Find the byte in which the required element is located
+        unsigned long int bytePos = sub / 8;
+
+        unsigned int visited;
+        memcpy( &visited, &aptr[bytePos], 1 );
+        return ( (visited >> (7 - offset)) & 1 );
+    }
+    
+    /*
+     * Set the element indexed by sub to be visited
+     *
+     * sub : The index of the element
+     */
+    void setVisited( const unsigned long int sub )
+    {
+        // Find the bit offset
+        int offset = sub % 8;
+
+        // Find the byte in which the required element is located
+        unsigned long int bytePos = sub / 8;
+
+        unsigned int visited = 1u << (7 - offset);
+        aptr[bytePos] = aptr[bytePos] | visited;
+    }
+};
+
+/*
+ * Implementation of the Simple Pairwise Comparison method with random order of
+ * k-mer iteration
+ *
+ * k: The length of the k-mer
+ * d: The maximum edit distance allowed
+ */
+void doRandPairwiseCmp( const int k, const int d )
+{
+    unsigned long int kmerSpaceSize = 1ul << (2 * k);
+    VisitedArray visit(kmerSpaceSize);
+    vector<unsigned long int> MIS;
+    bool isCovered = false;
+    
+    cerr << "\nList of independent nodes: " << endl;
+    sleep(1);
+    srand( time(nullptr) );
+    for ( unsigned long int i = 0; i < kmerSpaceSize; ++i )
+    {
+        unsigned long int count = rand() % kmerSpaceSize;
+        unsigned long int kmer;
+        bool found = false;
+        for (kmer = count; kmer < kmerSpaceSize; ++kmer)
+        {
+            if (visit[kmer] == 0)
+            {
+                found = true;
+                break;
+            }
+        }
+        if ( !found )
+        {
+            for (kmer = 0; kmer < count; ++kmer)
+            {
+                if (visit[kmer] == 0)
+                {
+                    break;
+                }
+            }
+        }
+        visit.setVisited(kmer);
+        for ( const unsigned long int &j : MIS )
+        {
+            if ( editDist(kmer, j, k, d) <= d )
+            {
+                isCovered = true;
+                break;
+            }
+        }
+
+        if ( isCovered )
+        {
+            isCovered = false;
+            continue;
+        }
+
+        printKmer( kmer, k );
+        cerr << ' ';
+        MIS.push_back( kmer );
     }
 
     cerr << "\nThe graph has an independent set of size " << MIS.size() 
@@ -287,7 +420,8 @@ bool askNeighbors( const unsigned long int enc, const int k, const int d,
 }
 
 /*
- * Implementation of the heuristic method
+ * Implementation of the heuristic method with alphabetical order of k-mer
+ * iteration
  *
  * k: The length of the k-mer
  * d: The maximum edit distance allowed
@@ -363,6 +497,117 @@ void doHeuristic( const int k, const int d )
         dg.push_back( ds[2] );
         dt.push_back( ds[3] );
         mapping.setMap( i, i );
+    }
+
+    cerr << "\nThe graph has an independent set of size " << MIS.size() 
+         << ".\n\n";
+    reportPerformance();
+}
+
+/*
+ * Implementation of the heuristic method with random order of k-mer iteration
+ *
+ * k: The length of the k-mer
+ * d: The maximum edit distance allowed
+ */
+void doRandHeuristic( const int k, const int d )
+{
+    unsigned long int kmerSpaceSize = 1ul << (2 * k);
+    VisitedArray visit(kmerSpaceSize);
+    vector<unsigned long int> MIS;
+    vector<int> da;
+    vector<int> dc;
+    vector<int> dg;
+    vector<int> dt;
+
+    MIS.push_back( 0 );
+    da.push_back( 0 );
+    dc.push_back( k );
+    dg.push_back( k );
+    dt.push_back( k );
+
+    sleep(1);
+    srand( time(nullptr) );
+    MappingArray mapping(kmerSpaceSize / 4);
+
+    cerr << "\nList of independent nodes: " << endl;
+    printKmer( 0, k );
+    cerr << ' ';
+    visit.setVisited(0);
+    bool isCovered = false;
+    for (unsigned long int i = 1; i < kmerSpaceSize; ++i)
+    {
+        unsigned long int count = rand() % kmerSpaceSize;
+        unsigned long int kmer;
+        bool found = false;
+        for (kmer = count; kmer < kmerSpaceSize; ++kmer)
+        {
+            if (visit[kmer] == 0)
+            {
+                found = true;
+                break;
+            }
+        }
+        if ( !found )
+        {
+            for (kmer = 1; kmer < count; ++kmer)
+            {
+                if (visit[kmer] == 0)
+                {
+                    break;
+                }
+            }
+        }
+        visit.setVisited(kmer);
+
+        if ( askNeighbors(kmer, k, d, mapping) )
+        {
+            continue;
+        }
+
+        int ds[] = {k, k, k, k};
+        unsigned long int temp_v = kmer;
+        for (int j = 0; j < k; ++j)
+        {
+            ds[temp_v & 3]--;
+            temp_v = temp_v >> 2;
+        }
+
+        for (unsigned long int j = 0; j < MIS.size(); ++j)
+        {
+            if ( abs(da[j] - ds[0]) > d ||
+                 abs(dc[j] - ds[1]) > d ||
+                 abs(dg[j] - ds[2]) > d ||
+                 abs(dt[j] - ds[3]) > d )
+            {
+                continue;
+            }
+            if ( da[j] + ds[0] <= d ||
+                 dc[j] + ds[1] <= d ||
+                 dg[j] + ds[2] <= d ||
+                 dt[j] + ds[3] <= d ||
+                 editDist(kmer, MIS[j], k, d) <= d)
+            {
+                mapping.setMap(kmer, MIS[j]);
+                isCovered = true;
+                break;
+            }
+        }
+
+        if ( isCovered )
+        {
+            isCovered = false;
+            continue;
+        }
+
+        printKmer( kmer, k );
+        cerr << ' ';
+        MIS.push_back( kmer );
+        da.push_back( ds[0] );
+        dc.push_back( ds[1] );
+        dg.push_back( ds[2] );
+        dt.push_back( ds[3] );
+        mapping.setMap( kmer, kmer );
     }
 
     cerr << "\nThe graph has an independent set of size " << MIS.size() 
@@ -535,7 +780,7 @@ void getNeighbor( unsigned long int enc, int k,
 }
 
 /*
- * Implementation of the BFS method
+ * Implementation of the BFS method with alphabetical order of k-mer iteration
  *
  * k: The length of the k-mer
  * d: The maximum edit distance allowed
@@ -643,6 +888,140 @@ void doBFS( const int k, const int d )
     reportPerformance();
 }
 
+/*
+ * Implementation of the BFS method with random order of k-mer iteration
+ *
+ * k: The length of the k-mer
+ * d: The maximum edit distance allowed
+ */
+void doRandBFS( const int k, const int d )
+{
+    // Initialize dist arrays for BFS
+    unsigned long int num_kmers = 1ul << (2 * k);
+    DistArray dist_kmer(num_kmers, d);
+
+    unsigned long int num_kMinus1mers = 1ul << (2 * (k-1));
+    DistArray dist_kMinus1mer(num_kMinus1mers, d);
+
+    unsigned long int num_indep_nodes = 0;
+    sleep(1);
+    srand( time(nullptr) );
+    cerr << "\nList of independent nodes: " << endl;
+    for ( unsigned long int i = 0; i < num_kmers; ++i )
+    {
+        unsigned long int count = rand() % num_kmers;
+        unsigned long int kmer;
+        bool found = false;
+        for (kmer = count; kmer < num_kmers; ++kmer)
+        {
+            if (dist_kmer[kmer] == (d + 1)/2 - 1)
+            {
+                found = true;
+                break;
+            }
+        }
+        if ( !found )
+        {
+            for (kmer = 0; kmer < count; ++kmer)
+            {
+                if (dist_kmer[kmer] == (d + 1)/2 - 1)
+                {
+                    found = true;
+                    break;
+                }
+            }
+        }
+        if ( !found )
+        {
+            break;
+        }
+
+        printKmer(kmer, k);
+        cerr << ' ';
+        num_indep_nodes++;
+
+        // Do BFS
+        vector<unsigned long int> Q; // Initialize an empty queue
+        Q.push_back( (kmer << 2) | 1 );
+
+        // Keep the search history
+        unordered_map<unsigned long int, unsigned int> hist;
+        hist.emplace( (kmer << 2) | 1, 0 );
+
+        dist_kmer.setDist(kmer, 0);
+        while ( !Q.empty() )
+        {
+            auto q0 = hist.find( Q[0] );
+            if ( q0->second + 1 > d )
+            {
+                break;
+            }
+            unordered_set<unsigned long int> neighbors;
+            getNeighbor( Q[0], k, neighbors );
+
+            if ( (Q[0] & 3) == 1 )
+            {
+                for ( auto &j : neighbors )
+                {
+                    if ( hist.find(j) != hist.end() )
+                    {
+                        continue;
+                    }
+                    unsigned int targetDist;
+                    if ( (j & 3) == 1 )
+                    {
+                        targetDist = dist_kmer[j >> 2];
+                        if ( targetDist == (d + 1)/2 - 1 ||
+                             (targetDist != (d + 1)/2 &&
+                              targetDist > q0->second + 1) )
+                        {
+                            dist_kmer.setDist(j >> 2, q0->second + 1);
+                            Q.push_back(j);
+                            hist.emplace( j, q0->second + 1 );
+                        }
+                    }
+                    else
+                    {
+                        targetDist = dist_kMinus1mer[j >> 2];
+                        if ( targetDist == (d + 1)/2 - 1 ||
+                             (targetDist != (d + 1)/2 &&
+                              targetDist > q0->second + 1) )
+                        {
+                            dist_kMinus1mer.setDist(j >> 2, q0->second + 1);
+                            Q.push_back(j);
+                            hist.emplace( j, q0->second + 1 );
+                        }
+                    }
+                }
+            }
+            else
+            {
+                for ( auto &j : neighbors )
+                {
+                    if ( hist.find(j) != hist.end() )
+                    {
+                        continue;
+                    }
+                    unsigned int targetDist = dist_kmer[j >> 2];
+                    if ( targetDist == (d + 1)/2 - 1 || 
+                         (targetDist != (d + 1)/2 &&
+                          targetDist > q0->second + 1) )
+                    {
+                        dist_kmer.setDist(j >> 2, q0->second + 1);
+                        Q.push_back(j);
+                        hist.emplace( j, q0->second + 1 );
+                    }
+                }
+            }
+            Q.erase( Q.begin() );
+        }
+    }
+
+    cerr << "\nThe graph has an independent set of size " << num_indep_nodes 
+         << ".\n\n";
+    reportPerformance();
+}
+
 int main()
 {
     cerr << "This program is used to find a MIS in a k-mer space. Valid inputs"
@@ -652,28 +1031,54 @@ int main()
     int k;
     int d;
     int method;
+    int random;
     cerr << "Please enter k: ";
     cin >> k;
     cerr << k << endl;
     cerr << "Plesae enter d: ";
     cin >> d;
     cerr << d << endl;
-    cerr << "Choose an approach. Please enter 1 for Simple Pairwise Comparison"
-         << ", 2 for Heuristic Pairwise Comparison, or 3 for BFS: ";
+    cerr << "Please choose an approach. Notice that the BFS approach does not " 
+         << "support d>5. Enter 1 for Simple Greedy, 2 for Improved Greedy, "
+         << "or 3 for BFS: ";
     cin >> method;
     cerr << method << endl;
+    cerr << "The iteration order of k-mers affects the resulting MIS size and "
+         << "the performance of the program.\n"
+         << "Please choose the iteration order of k-mers. Enter 1 for random "
+         << "order or 2 for alphabetical order: ";
+    cin >> random;
+    cerr << random << endl;
 
-    if ( method == 1 )
+    if ( random == 2 )
     {
-        doPairwiseCmp( k, d );
+        if ( method == 1 )
+        {
+            doPairwiseCmp( k, d );
+        }
+        else if ( method == 2 )
+        {
+            doHeuristic( k, d );
+        }
+        else if ( method == 3 )
+        {
+            doBFS( k, d );
+        }
     }
-    else if ( method == 2 )
+    else if ( random == 1 )
     {
-        doHeuristic( k, d );
-    }
-    else if ( method == 3 )
-    {
-        doBFS( k, d );
+        if ( method == 1 )
+        {
+            doRandPairwiseCmp( k, d );
+        }
+        else if ( method == 2 )
+        {
+            doRandHeuristic( k, d );
+        }
+        else if ( method == 3 )
+        {
+            doRandBFS( k, d );
+        }
     }
     return 0;
 }
