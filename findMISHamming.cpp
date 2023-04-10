@@ -3,7 +3,7 @@
  * Sets of k-mers with the Edit Distance".
  *
  * Author: Leran Ma (lkm5463@psu.edu)
- * Date:   1:13 PM, Thursday, April 6, 2023
+ * Date:   3:38 PM, Monday, April 10, 2023
  */
 
 #include <iostream>
@@ -14,6 +14,7 @@
 #include <unordered_map>
 #include <vector>
 #include <deque>
+#include <iterator>
 #include <unistd.h>
 #include <sys/wait.h>
 #include <ios>
@@ -57,7 +58,7 @@ int hammingDist( const unsigned long int s1, const unsigned long int s2,
     int count = 0;
     for (int i = 0; i < k; ++i)
     {
-        count += (temp & 3 != 0);
+        count += ((temp & 3) != 0);
         temp >>= 2;
     }
     return count;
@@ -170,8 +171,10 @@ void doRandPairwiseCmp( const int k, const int d )
     cerr << "\nList of independent nodes: " << endl;
     while ( !space.empty() )
     {
-        unsigned long int kmer = *(space.begin() + (rand() % space.size()));
-        space.erase(kmer);
+        auto it = space.begin();
+        advance(it, rand() % space.size());
+        unsigned long int kmer = *it;
+        space.erase(it);
         
         for ( const unsigned long int &j : MIS )
         {
@@ -428,7 +431,7 @@ void doRandHeuristic( const int k, const int d )
         space.insert(i);
     }
     space.erase(kmer);
-    MIS.insert(kmer);
+    MIS.push_back(kmer);
     int ds[] = {k, k, k, k};
     unsigned long int temp_v = kmer;
     for (int j = 0; j < k; ++j)
@@ -436,10 +439,10 @@ void doRandHeuristic( const int k, const int d )
         ds[temp_v & 3]--;
         temp_v = temp_v >> 2;
     }
-    da.insert(ds[0]);
-    dc.insert(ds[1]);
-    dg.insert(ds[2]);
-    dt.insert(ds[3]);
+    da.push_back(ds[0]);
+    dc.push_back(ds[1]);
+    dg.push_back(ds[2]);
+    dt.push_back(ds[3]);
 
     cerr << "\nList of independent nodes: " << endl;
     printKmer( kmer, k );
@@ -447,8 +450,10 @@ void doRandHeuristic( const int k, const int d )
     bool isCovered = false;
     while ( !space.empty() )
     {
-        kmer = *(space.begin() + (rand() % space.size()));
-        space.erase(kmer);
+        auto it = space.begin();
+        advance(it, rand() % space.size());
+        unsigned long int kmer = *it;
+        space.erase(it);
         
         if ( askNeighbors(kmer, k, d, mapping) )
         {
@@ -730,8 +735,11 @@ void doRandBFS( const int k, const int d )
     cerr << "\nList of independent nodes: " << endl;
     while ( !space.empty() )
     {
-        unsigned long int i = *(space.begin() + (rand() % space.size()));        
-        space.erase(i);
+        auto it = space.begin();
+        advance(it, rand() % space.size());
+        unsigned long int i = *it;
+        space.erase(it);
+
         if ( dist_kmer[i] != (d + 1)/2 - 1 )
         {
             continue;
